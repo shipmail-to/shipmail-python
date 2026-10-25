@@ -1,0 +1,68 @@
+name: Publish
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".shipmail-source-revision"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      unpublished: ${{ steps.version.outputs.unpublished }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Find an unpublished version
+        id: version
+        run: |
+          version="$(sed -n 's/^VERSION = "\([^"]*\)".*/\1/p' shipmail/_version.py)"
+          status="$(curl --silent --output /dev/null --write-out '%{http_code}' "https://pypi.org/pypi/shipmail/${version}/json")"
+          case "$status" in
+            200) echo "unpublished=false" >> "$GITHUB_OUTPUT"; echo "::notice::shipmail ${version} is already on PyPI." ;;
+            404) echo "unpublished=true" >> "$GITHUB_OUTPUT" ;;
+            *) echo "::error::PyPI answered ${status} for shipmail ${version}."; exit 1 ;;
+          esac
+
+  publish:
+    needs: check
+    if: needs.check.outputs.unpublished == 'true'
+    runs-on: ubuntu-24.04
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Test
+        run: |
+          pip install -e ".[dev]"
+          python -m pytest tests/
+
+      - name: Build
+        run: |
+          pip install build
+          python -m build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
