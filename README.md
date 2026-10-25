@@ -532,6 +532,12 @@ A valid `Retry-After` header, in seconds or HTTP-date format, takes precedence o
 client = Shipmail("sm_live_...", max_retries=0)  # Disable retries
 ```
 
+## Links
+
+- [Python SDK guide](https://shipmail.to/docs/sdks/python)
+- [Source](https://github.com/shipmail-to/shipmail-python)
+- [Issues](https://github.com/shipmail-to/shipmail-python/issues)
+
 ## License
 
 MIT
