@@ -11,4 +11,6 @@ def test_send_message_params_declares_from_as_optional() -> None:
 
     assert params["from"] == "hello@example.com"
     assert "from" in SendMessageParams.__optional_keys__
-    assert SendMessageParams.__required_keys__ == frozenset({"subject", "to"})
+    assert SendMessageParams.__required_keys__ == frozenset({"to"})
+    assert "subject" in SendMessageParams.__optional_keys__
+    assert "template" in SendMessageParams.__optional_keys__

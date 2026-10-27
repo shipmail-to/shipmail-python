@@ -25,3 +25,33 @@ class Member(TypedDict):
 
 
 ListMembersParams = PaginationParams
+
+InvitationRole = Literal["admin", "member"]
+
+
+class Invitation(TypedDict):
+    object: Literal["invitation"]
+    id: str
+    email: str
+    role: InvitationRole
+    mailbox_access: MemberMailboxAccess
+    # Only a `member` can carry `editor`.
+    newsletter_role: Literal["editor"] | None
+    created_at: str
+    expires_at: str | None
+
+
+class InvitationList(TypedDict):
+    data: list[Invitation]
+
+
+class _InviteMemberParamsRequired(TypedDict):
+    email: str
+    role: InvitationRole
+
+
+class InviteMemberParams(_InviteMemberParamsRequired, total=False):
+    # Defaults to `selected`. `mailbox_ids` is ignored for `all`.
+    mailbox_access: MemberMailboxAccessScope
+    mailbox_ids: list[str]
+    newsletter_role: Literal["editor"] | None

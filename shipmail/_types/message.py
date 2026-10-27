@@ -11,6 +11,7 @@ from .common import (
     PaginationParams,
     SandboxOutcome,
 )
+from .template import SendMessageTemplate
 
 
 class AttachmentMetadata(TypedDict):
@@ -95,7 +96,6 @@ class OutboundHeader(TypedDict):
 
 class _SendMessageRequired(TypedDict):
     to: list[EmailRecipientInput]
-    subject: str
 
 
 # "hello@example.com" or "Acme Support <hello@example.com>".
@@ -105,11 +105,14 @@ _SendMessageFrom = TypedDict("_SendMessageFrom", {"from": str}, total=False)
 
 class SendMessageParams(_SendMessageRequired, _SendMessageFrom, total=False):
     mailbox_id: str
+    subject: str
     cc: list[EmailRecipientInput]
     bcc: list[EmailRecipientInput]
     reply_to: EmailRecipientInput
     html: str
     text: str
+    # A stored template. With it, omit subject, html and text.
+    template: SendMessageTemplate
     in_reply_to: str
     references: list[str]
     attachments: list[Attachment]
@@ -241,6 +244,7 @@ class ReplyToMessageParams(_ReplyToMessageRequired, total=False):
     html: str
     text: str
     cc: list[EmailRecipientInput]
+    bcc: list[EmailRecipientInput]
     client_reference: str
     metadata: dict[str, str | int | float | bool | None]
     source_rfc_message_id: str

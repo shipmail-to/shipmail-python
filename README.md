@@ -401,6 +401,40 @@ sanitized inline HTML. Use `<p>` and `<br>` for line breaks. Allowed tags are
 Concurrent newsletter updates can raise `ConflictError` (409). Fetch the latest
 newsletter, merge your changes, and retry the update.
 
+### Templates
+
+Store a subject and body with `{{key}}` variables, publish a version, and send by template ID.
+A send uses the published version unless it pins another.
+
+```python
+template = client.templates.create({
+    "name": "Welcome",
+    "subject": "Welcome, {{first_name}}",
+    "html": "<p>Hi {{first_name}}, your plan is {{plan}}.</p>",
+    "text": "Hi {{first_name}}, your plan is {{plan}}.",
+    "fallbacks": {"plan": "Free"},  # first_name has no fallback, so every send must pass it
+    "publish": True,
+})
+
+preview = client.templates.render(template["id"], {"variables": {"first_name": "Ada"}})
+
+client.templates.update(template["id"], {"subject": "Hello, {{first_name}}", "text": None})  # None removes the text body
+client.templates.publish(template["id"])
+
+message = client.messages.send({
+    "mailbox_id": "mbx_...",
+    "to": ["user@example.com"],
+    # Omit subject, html and text when sending a template.
+    "template": {"id": template["id"], "variables": {"first_name": "Ada"}},
+})
+
+templates = client.templates.list()
+versions = client.templates.list_versions(template["id"])
+version = client.templates.get_version(template["id"], 1)
+client.templates.restore_version(template["id"], 1)  # copies version 1 into the draft
+client.templates.delete(template["id"])
+```
+
 ### Webhooks
 
 ```python

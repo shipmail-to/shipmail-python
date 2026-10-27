@@ -34,6 +34,7 @@ from .resources.reply_scans import AsyncReplyScans, SyncReplyScans
 from .resources.scheduled_messages import AsyncScheduledMessages, SyncScheduledMessages
 from .resources.status import AsyncStatus, SyncStatus
 from .resources.suppressions import AsyncSuppressions, SyncSuppressions
+from .resources.templates import AsyncTemplates, SyncTemplates
 from .resources.threads import AsyncThreads, SyncThreads
 from .resources.webhooks import AsyncWebhooks, SyncWebhooks
 
@@ -56,6 +57,7 @@ class Shipmail(BaseClient):
     reply_scans: SyncReplyScans
     scheduled_messages: SyncScheduledMessages
     suppressions: SyncSuppressions
+    templates: SyncTemplates
     threads: SyncThreads
     webhooks: SyncWebhooks
     status: SyncStatus
@@ -95,6 +97,7 @@ class Shipmail(BaseClient):
         self.reply_scans = SyncReplyScans(self)
         self.scheduled_messages = SyncScheduledMessages(self)
         self.suppressions = SyncSuppressions(self)
+        self.templates = SyncTemplates(self)
         self.threads = SyncThreads(self)
         self.webhooks = SyncWebhooks(self)
         self.status = SyncStatus(self)
@@ -259,6 +262,7 @@ class AsyncShipmail(BaseClient):
     reply_scans: AsyncReplyScans
     scheduled_messages: AsyncScheduledMessages
     suppressions: AsyncSuppressions
+    templates: AsyncTemplates
     threads: AsyncThreads
     webhooks: AsyncWebhooks
     status: AsyncStatus
@@ -298,6 +302,7 @@ class AsyncShipmail(BaseClient):
         self.reply_scans = AsyncReplyScans(self)
         self.scheduled_messages = AsyncScheduledMessages(self)
         self.suppressions = AsyncSuppressions(self)
+        self.templates = AsyncTemplates(self)
         self.threads = AsyncThreads(self)
         self.webhooks = AsyncWebhooks(self)
         self.status = AsyncStatus(self)

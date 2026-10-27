@@ -3,9 +3,10 @@ from __future__ import annotations
 import json
 
 import httpx
+import pytest
 
 from shipmail import Message
-from tests.conftest import json_response, make_client
+from tests.conftest import json_response, make_async_client, make_client
 
 mock_message: Message = {
     "object": "message",
@@ -193,6 +194,45 @@ class TestSend:
                 ],
             }
         )
+
+    def test_sends_a_stored_template_without_subject_or_body(self) -> None:
+        template_body = {"id": "tpl_123", "version": 2, "variables": {"first_name": "Ada", "seats": 3}}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert request.method == "POST"
+            assert request.url.path == "/v1/messages"
+            assert json.loads(request.content) == {
+                "mailbox_id": "mbx_456",
+                "to": ["user@example.com"],
+                "template": template_body,
+            }
+            return json_response(mock_message, 201)
+
+        client = make_client(handler)
+        result = client.messages.send(
+            {
+                "mailbox_id": "mbx_456",
+                "to": ["user@example.com"],
+                "template": {"id": "tpl_123", "version": 2, "variables": {"first_name": "Ada", "seats": 3}},
+            }
+        )
+        assert result["id"] == "msg_123"
+
+    @pytest.mark.asyncio
+    async def test_async_sends_a_stored_template(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert json.loads(request.content) == {
+                "mailbox_id": "mbx_456",
+                "to": ["user@example.com"],
+                "template": {"id": "tpl_123"},
+            }
+            return json_response(mock_message, 201)
+
+        client = make_async_client(handler)
+        result = await client.messages.send(
+            {"mailbox_id": "mbx_456", "to": ["user@example.com"], "template": {"id": "tpl_123"}}
+        )
+        assert result["id"] == "msg_123"
 
 
 class TestList:

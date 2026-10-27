@@ -40,6 +40,7 @@ class ReplyToThreadParams(_ReplyToThreadRequired, total=False):
     html: str
     text: str
     cc: list[EmailRecipientInput]
+    bcc: list[EmailRecipientInput]
     scheduled_at: str
     track_reply: bool
     sandbox_outcome: SandboxOutcome
