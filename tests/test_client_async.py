@@ -251,6 +251,7 @@ class TestConstructor:
         assert client.capabilities is not None
         assert client.threads is not None
         assert client.webhooks is not None
+        assert client.event_queues is not None
         assert client.status is not None
         assert client.suppressions is not None
 

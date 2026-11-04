@@ -486,6 +486,28 @@ replay = client.webhooks.replay_delivery(
 )
 ```
 
+### Event queues
+
+An event queue stores the same events as a webhook for you to read with your API key, so no
+public URL is needed. Delivery is at least once: dedupe on `event_id`. Events not acknowledged
+within 30 days are deleted.
+
+```python
+queue = client.event_queues.create({"events": ["message.received"]})
+
+while True:
+    page = client.event_queues.list_events(queue["id"], {"limit": 100})
+    for event in page["data"]:
+        ...  # handle the event, skipping event_id values already handled
+    if page["data"]:
+        client.event_queues.ack(queue["id"], [event["event_id"] for event in page["data"]])
+    if not page["has_more"]:
+        break
+
+queues = client.event_queues.list()
+client.event_queues.delete(queue["id"])
+```
+
 ### Status
 
 ```python

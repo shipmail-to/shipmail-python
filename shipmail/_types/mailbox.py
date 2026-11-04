@@ -444,6 +444,12 @@ class InboxDraftRecipient(TypedDict):
     name: str | None
 
 
+class InboxDraftAttachment(TypedDict):
+    name: str | None
+    type: str
+    size: int
+
+
 InboxDraft = TypedDict(
     "InboxDraft",
     {
@@ -459,6 +465,9 @@ InboxDraft = TypedDict(
         # Formatting the HTML sanitiser dropped, such as "table" or "h4".
         "removed_formatting": list[str],
         "created_at": str,
+        # Link for a person to review and send this draft; None for a test-mode key.
+        "review_url": str | None,
+        "attachments": list[InboxDraftAttachment],
     },
 )
 
@@ -485,6 +494,10 @@ class InboxReplyDraft(TypedDict):
     created_at: str
     updated_at: str
     sent_at: str | None
+    # Link for a person to review and send this draft; None unless status is "draft"
+    # and the key is live. The person must be signed in with access to the mailbox.
+    review_url: str | None
+    attachments: list[InboxDraftAttachment]
 
 
 class InboxReplyDraftWrite(InboxReplyDraft):
@@ -630,6 +643,8 @@ class CreateInboxDraftParams(_CreateInboxDraftParamsRequired, total=False):
     subject: str
     text: str
     html: str
+    # Files uploaded through the staged attachment flow.
+    staged_attachment_ids: list[str]
 
 
 class _CreateInboxReplyDraftParamsRequired(TypedDict):
@@ -640,6 +655,8 @@ class CreateInboxReplyDraftParams(_CreateInboxReplyDraftParamsRequired, total=Fa
     text: str
     html: str
     reply_mode: Literal["reply", "reply_all"]
+    # Files uploaded through the staged attachment flow.
+    staged_attachment_ids: list[str]
 
 
 class UpdateInboxReplyDraftParams(TypedDict, total=False):

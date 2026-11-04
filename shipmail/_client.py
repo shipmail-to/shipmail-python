@@ -27,6 +27,7 @@ from .resources.capabilities import AsyncCapabilities, SyncCapabilities
 from .resources.organization import AsyncOrganization, SyncOrganization
 from .resources.customers import AsyncCustomers, SyncCustomers
 from .resources.domains import AsyncDomains, SyncDomains
+from .resources.event_queues import AsyncEventQueues, SyncEventQueues
 from .resources.mailboxes import AsyncMailboxes, SyncMailboxes
 from .resources.members import AsyncMembers, SyncMembers
 from .resources.messages import AsyncMessages, SyncMessages
@@ -52,6 +53,7 @@ class Shipmail(BaseClient):
     capabilities: SyncCapabilities
     customers: SyncCustomers
     domains: SyncDomains
+    event_queues: SyncEventQueues
     mailboxes: SyncMailboxes
     members: SyncMembers
     messages: SyncMessages
@@ -94,6 +96,7 @@ class Shipmail(BaseClient):
         self.capabilities = SyncCapabilities(self)
         self.customers = SyncCustomers(self)
         self.domains = SyncDomains(self)
+        self.event_queues = SyncEventQueues(self)
         self.mailboxes = SyncMailboxes(self)
         self.members = SyncMembers(self)
         self.messages = SyncMessages(self)
@@ -261,6 +264,7 @@ class AsyncShipmail(BaseClient):
     capabilities: AsyncCapabilities
     customers: AsyncCustomers
     domains: AsyncDomains
+    event_queues: AsyncEventQueues
     mailboxes: AsyncMailboxes
     members: AsyncMembers
     messages: AsyncMessages
@@ -303,6 +307,7 @@ class AsyncShipmail(BaseClient):
         self.capabilities = AsyncCapabilities(self)
         self.customers = AsyncCustomers(self)
         self.domains = AsyncDomains(self)
+        self.event_queues = AsyncEventQueues(self)
         self.mailboxes = AsyncMailboxes(self)
         self.members = AsyncMembers(self)
         self.messages = AsyncMessages(self)

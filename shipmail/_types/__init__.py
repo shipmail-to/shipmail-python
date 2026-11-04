@@ -412,6 +412,14 @@ from .thread import (
     ReplyToThreadParams,
     Thread,
 )
+from .event_queue import (
+    AckEventQueueEventsResponse,
+    CreateEventQueueParams,
+    EventQueue,
+    EventQueueEvents,
+    ListEventQueueEventsParams,
+    ListEventQueuesParams,
+)
 from .webhook import (
     CreateWebhookParams,
     ListDeliveriesParams,
@@ -606,6 +614,12 @@ __all__ = [
     "CreateSuppressionParams",
     "CreateSuppressionScope",
     "CreateWebhookParams",
+    "AckEventQueueEventsResponse",
+    "CreateEventQueueParams",
+    "EventQueue",
+    "EventQueueEvents",
+    "ListEventQueueEventsParams",
+    "ListEventQueuesParams",
     "DownloadInboxAttachmentParams",
     "Domain",
     "DomainDnsRecord",

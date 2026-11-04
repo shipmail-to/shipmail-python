@@ -77,6 +77,7 @@ WEBHOOK_EVENT_TYPES = (
     "booking.created",
     "subscriber.added",
     "newsletter.sent",
+    "draft.reviewed",
 )
 WebhookEventType = Literal[
     "message.received",
@@ -109,6 +110,7 @@ WebhookEventType = Literal[
     "booking.created",
     "subscriber.added",
     "newsletter.sent",
+    "draft.reviewed",
 ]
 
 WEBHOOK_DELIVERY_EVENT_TYPES = ("webhook.test", *WEBHOOK_EVENT_TYPES)
@@ -144,6 +146,7 @@ WebhookDeliveryEventType = Literal[
     "booking.created",
     "subscriber.added",
     "newsletter.sent",
+    "draft.reviewed",
 ]
 
 WEBHOOK_DELIVERY_STATUSES = ("pending", "delivered", "failed")
