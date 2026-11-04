@@ -5,8 +5,11 @@ from typing import Literal, Optional, TypedDict
 from .common import PaginationParams
 
 SuppressionReason = Literal["hard_bounce", "complaint", "manual", "soft_bounce"]
-# "all" blocks every send. "marketing" blocks newsletter sends only.
-SuppressionScope = Literal["all", "marketing"]
+# "all" blocks every send. The others come from a complaint and block one kind of email:
+# "marketing" newsletters, "transactional" application senders, "mailbox" mail from a mailbox.
+SuppressionScope = Literal["all", "marketing", "transactional", "mailbox"]
+# The scopes an entry you add can have.
+CreateSuppressionScope = Literal["all", "marketing"]
 
 
 class Suppression(TypedDict):
@@ -29,4 +32,4 @@ class _CreateSuppressionParamsRequired(TypedDict):
 
 class CreateSuppressionParams(_CreateSuppressionParamsRequired, total=False):
     # Defaults to "all".
-    scope: SuppressionScope
+    scope: CreateSuppressionScope

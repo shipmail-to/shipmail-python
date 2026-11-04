@@ -14,9 +14,11 @@ if TYPE_CHECKING:
         AddSubscribersBatchResult,
         Audience,
         AudienceFeed,
+        ConfirmationResend,
         CreateAudienceParams,
         ListAudiencesParams,
         ListSubscribersParams,
+        ResendSubscriberConfirmationParams,
         ResubscribeSubscriberParams,
         Subscriber,
         SubscriberResult,
@@ -25,6 +27,12 @@ if TYPE_CHECKING:
         UpdateSubscriberParams,
     )
     from .._types.common import MethodOptions, PaginatedResponse
+    from .._types.segment import (
+        CreateSegmentParams,
+        ListSegmentsResponse,
+        Segment,
+        UpdateSegmentParams,
+    )
     from .._types.welcome_sequence import (
         CreateWelcomeStepParams,
         DeletedWelcomeStep,
@@ -49,6 +57,14 @@ def _welcome(audience_id: str) -> str:
 
 def _welcome_step(audience_id: str, step_id: str) -> str:
     return f"{_welcome(audience_id)}/steps/{quote(step_id, safe='')}"
+
+
+def _segments(audience_id: str) -> str:
+    return f"/audiences/{quote(audience_id, safe='')}/segments"
+
+
+def _segment(audience_id: str, segment_id: str) -> str:
+    return f"{_segments(audience_id)}/{quote(segment_id, safe='')}"
 
 
 def _member(audience_id: str, subscriber_id: str) -> str:
@@ -135,6 +151,21 @@ class SyncSubscribers:
                 method="POST",
                 path=f"{_member(audience_id, subscriber_id)}/resubscribe",
                 body=params,
+                method_options=options,
+            )
+        )
+
+    def resend_confirmation(
+        self,
+        audience_id: str,
+        params: ResendSubscriberConfirmationParams | None = None,
+        options: MethodOptions | None = None,
+    ) -> ConfirmationResend:
+        return self._client.request(
+            RequestOptions(
+                method="POST",
+                path=f"{_subs(audience_id)}/resend-confirmation",
+                body=params or {},
                 method_options=options,
             )
         )
@@ -246,14 +277,62 @@ class SyncWelcomeSequences:
         )
 
 
+class SyncSegments:
+    def __init__(self, client: Shipmail) -> None:
+        self._client = client
+
+    def list(self, audience_id: str, options: MethodOptions | None = None) -> ListSegmentsResponse:
+        return self._client.request(
+            RequestOptions(method="GET", path=_segments(audience_id), method_options=options)
+        )
+
+    def create(
+        self,
+        audience_id: str,
+        params: CreateSegmentParams,
+        options: MethodOptions | None = None,
+    ) -> Segment:
+        return self._client.request(
+            RequestOptions(method="POST", path=_segments(audience_id), body=params, method_options=options)
+        )
+
+    def get(self, audience_id: str, segment_id: str, options: MethodOptions | None = None) -> Segment:
+        return self._client.request(
+            RequestOptions(method="GET", path=_segment(audience_id, segment_id), method_options=options)
+        )
+
+    def update(
+        self,
+        audience_id: str,
+        segment_id: str,
+        params: UpdateSegmentParams,
+        options: MethodOptions | None = None,
+    ) -> Segment:
+        return self._client.request(
+            RequestOptions(
+                method="PATCH",
+                path=_segment(audience_id, segment_id),
+                body=params,
+                method_options=options,
+            )
+        )
+
+    def delete(self, audience_id: str, segment_id: str, options: MethodOptions | None = None) -> None:
+        self._client.request(
+            RequestOptions(method="DELETE", path=_segment(audience_id, segment_id), method_options=options)
+        )
+
+
 class SyncAudiences:
     feeds: SyncAudienceFeeds
+    segments: SyncSegments
     subscribers: SyncSubscribers
     welcome_sequence: SyncWelcomeSequences
 
     def __init__(self, client: Shipmail) -> None:
         self._client = client
         self.feeds = SyncAudienceFeeds(client)
+        self.segments = SyncSegments(client)
         self.subscribers = SyncSubscribers(client)
         self.welcome_sequence = SyncWelcomeSequences(client)
 
@@ -382,6 +461,21 @@ class AsyncSubscribers:
             )
         )
 
+    async def resend_confirmation(
+        self,
+        audience_id: str,
+        params: ResendSubscriberConfirmationParams | None = None,
+        options: MethodOptions | None = None,
+    ) -> ConfirmationResend:
+        return await self._client.request(
+            RequestOptions(
+                method="POST",
+                path=f"{_subs(audience_id)}/resend-confirmation",
+                body=params or {},
+                method_options=options,
+            )
+        )
+
     async def remove(self, audience_id: str, subscriber_id: str, options: MethodOptions | None = None) -> None:
         await self._client.request(
             RequestOptions(method="DELETE", path=_member(audience_id, subscriber_id), method_options=options)
@@ -489,14 +583,62 @@ class AsyncWelcomeSequences:
         )
 
 
+class AsyncSegments:
+    def __init__(self, client: AsyncShipmail) -> None:
+        self._client = client
+
+    async def list(self, audience_id: str, options: MethodOptions | None = None) -> ListSegmentsResponse:
+        return await self._client.request(
+            RequestOptions(method="GET", path=_segments(audience_id), method_options=options)
+        )
+
+    async def create(
+        self,
+        audience_id: str,
+        params: CreateSegmentParams,
+        options: MethodOptions | None = None,
+    ) -> Segment:
+        return await self._client.request(
+            RequestOptions(method="POST", path=_segments(audience_id), body=params, method_options=options)
+        )
+
+    async def get(self, audience_id: str, segment_id: str, options: MethodOptions | None = None) -> Segment:
+        return await self._client.request(
+            RequestOptions(method="GET", path=_segment(audience_id, segment_id), method_options=options)
+        )
+
+    async def update(
+        self,
+        audience_id: str,
+        segment_id: str,
+        params: UpdateSegmentParams,
+        options: MethodOptions | None = None,
+    ) -> Segment:
+        return await self._client.request(
+            RequestOptions(
+                method="PATCH",
+                path=_segment(audience_id, segment_id),
+                body=params,
+                method_options=options,
+            )
+        )
+
+    async def delete(self, audience_id: str, segment_id: str, options: MethodOptions | None = None) -> None:
+        await self._client.request(
+            RequestOptions(method="DELETE", path=_segment(audience_id, segment_id), method_options=options)
+        )
+
+
 class AsyncAudiences:
     feeds: AsyncAudienceFeeds
+    segments: AsyncSegments
     subscribers: AsyncSubscribers
     welcome_sequence: AsyncWelcomeSequences
 
     def __init__(self, client: AsyncShipmail) -> None:
         self._client = client
         self.feeds = AsyncAudienceFeeds(client)
+        self.segments = AsyncSegments(client)
         self.subscribers = AsyncSubscribers(client)
         self.welcome_sequence = AsyncWelcomeSequences(client)
 

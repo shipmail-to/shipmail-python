@@ -10,11 +10,13 @@ if TYPE_CHECKING:
     from .._client import AsyncShipmail, Shipmail
     from .._types.common import MethodOptions, PaginatedResponse
     from .._types.message import (
+        CalendarInvitationResponseResult,
         ListMessageAnalyticsParams,
         ListMessagesParams,
         Message,
         MessageAnalyticsPage,
         ReplyToMessageParams,
+        RespondToInvitationParams,
         SendMessageParams,
     )
 
@@ -92,6 +94,16 @@ class SyncMessages:
             )
         )
 
+    def respond_to_invitation(
+        self, id: str, params: RespondToInvitationParams, options: MethodOptions | None = None
+    ) -> CalendarInvitationResponseResult:
+        """Accept, tentatively accept or decline the calendar invitation a received message carries."""
+        return self._client.request(
+            RequestOptions(
+                method="POST", path=f"/messages/{quote(id, safe='')}/invitation", body=params, method_options=options
+            )
+        )
+
 
 class AsyncMessages:
     def __init__(self, client: AsyncShipmail) -> None:
@@ -163,5 +175,15 @@ class AsyncMessages:
         return await self._client.request(
             RequestOptions(
                 method="POST", path=f"/messages/{quote(id, safe='')}/reply", body=params, method_options=options
+            )
+        )
+
+    async def respond_to_invitation(
+        self, id: str, params: RespondToInvitationParams, options: MethodOptions | None = None
+    ) -> CalendarInvitationResponseResult:
+        """Accept, tentatively accept or decline the calendar invitation a received message carries."""
+        return await self._client.request(
+            RequestOptions(
+                method="POST", path=f"/messages/{quote(id, safe='')}/invitation", body=params, method_options=options
             )
         )

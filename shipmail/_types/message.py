@@ -115,6 +115,8 @@ class SendMessageParams(_SendMessageRequired, _SendMessageFrom, total=False):
     template: SendMessageTemplate
     in_reply_to: str
     references: list[str]
+    # Base64 attachments, at most 20. The whole email can be up to 10 MB, attachments and encoding
+    # included; a larger one is refused with 422. The only attachments a transactional sender takes.
     attachments: list[Attachment]
     staged_attachment_ids: list[str]
     client_reference: str
@@ -123,6 +125,7 @@ class SendMessageParams(_SendMessageRequired, _SendMessageFrom, total=False):
     headers: list[OutboundHeader]
     scheduled_at: str
     track_reply: bool
+    add_signature: bool
     sandbox_outcome: SandboxOutcome
 
 
@@ -251,6 +254,7 @@ class ReplyToMessageParams(_ReplyToMessageRequired, total=False):
     headers: list[OutboundHeader]
     scheduled_at: str
     track_reply: bool
+    add_signature: bool
     sandbox_outcome: SandboxOutcome
 
 
@@ -269,3 +273,18 @@ class InjectSandboxInboundParams(_InjectSandboxInboundRequired, total=False):
     references: list[str]
     received_at: str
     headers: list[OutboundHeader]
+
+
+CalendarInvitationResponse = Literal["accepted", "tentative", "declined"]
+
+
+class RespondToInvitationParams(TypedDict):
+    response: CalendarInvitationResponse
+
+
+class CalendarInvitationResponseResult(TypedDict):
+    object: Literal["invitation_response"]
+    message_id: str
+    response: CalendarInvitationResponse
+    replied: bool
+    calendar_event_id: str | None

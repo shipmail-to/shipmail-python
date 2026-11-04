@@ -90,7 +90,24 @@ class NewsletterColumnContent(TypedDict, total=False):
     cta_url: str | None
 
 
-class NewsletterHeadingBlockRequired(TypedDict):
+NewsletterBlockChannel = Literal["all", "email", "web"]
+NewsletterBlockSegmentRule = Literal["in", "not_in"]
+
+
+# Where a block shows and to which readers. The website, archive and feed show a block as a reader
+# in no segment sees it. Segment membership is fixed when the send is scheduled. Welcome emails
+# accept channel only.
+class NewsletterBlockVisibility(TypedDict, total=False):
+    channel: NewsletterBlockChannel
+    segment_id: str | None
+    segment_rule: NewsletterBlockSegmentRule
+
+
+class NewsletterBlockConditions(TypedDict, total=False):
+    visibility: NewsletterBlockVisibility
+
+
+class NewsletterHeadingBlockRequired(NewsletterBlockConditions):
     type: Literal["heading"]
     text: str
 
@@ -99,12 +116,12 @@ class NewsletterHeadingBlock(NewsletterHeadingBlockRequired, total=False):
     level: Literal[1, 2, 3]
 
 
-class NewsletterParagraphBlock(TypedDict):
+class NewsletterParagraphBlock(NewsletterBlockConditions):
     type: Literal["paragraph"]
     body: str
 
 
-class NewsletterListBlockRequired(TypedDict):
+class NewsletterListBlockRequired(NewsletterBlockConditions):
     type: Literal["list"]
     items: list[str]
 
@@ -113,7 +130,7 @@ class NewsletterListBlock(NewsletterListBlockRequired, total=False):
     ordered: bool
 
 
-class NewsletterCalloutBlockRequired(TypedDict):
+class NewsletterCalloutBlockRequired(NewsletterBlockConditions):
     type: Literal["callout"]
     body: str
 
@@ -123,7 +140,7 @@ class NewsletterCalloutBlock(NewsletterCalloutBlockRequired, total=False):
     variant: NewsletterCalloutVariant
 
 
-class NewsletterButtonBlockRequired(TypedDict):
+class NewsletterButtonBlockRequired(NewsletterBlockConditions):
     type: Literal["button"]
     label: str
     url: str
@@ -133,7 +150,7 @@ class NewsletterButtonBlock(NewsletterButtonBlockRequired, total=False):
     align: NewsletterButtonAlign
 
 
-class NewsletterImageBlockRequired(TypedDict):
+class NewsletterImageBlockRequired(NewsletterBlockConditions):
     type: Literal["image"]
     url: str
     alt: str
@@ -146,14 +163,14 @@ class NewsletterImageBlock(NewsletterImageBlockRequired, total=False):
     caption_url: str | None
 
 
-class NewsletterVideoBlock(TypedDict):
+class NewsletterVideoBlock(NewsletterBlockConditions):
     type: Literal["video"]
     video_url: str
     thumbnail_url: str
     label: str
 
 
-class NewsletterColumnsBlockRequired(TypedDict):
+class NewsletterColumnsBlockRequired(NewsletterBlockConditions):
     type: Literal["columns"]
     left: NewsletterColumnContent
     right: NewsletterColumnContent
@@ -172,7 +189,7 @@ class NewsletterLinkListItem(NewsletterLinkListItemRequired, total=False):
     description: str | None
 
 
-class NewsletterLinkListBlockRequired(TypedDict):
+class NewsletterLinkListBlockRequired(NewsletterBlockConditions):
     type: Literal["link_list"]
     items: list[NewsletterLinkListItem]
 
@@ -181,7 +198,7 @@ class NewsletterLinkListBlock(NewsletterLinkListBlockRequired, total=False):
     title: str | None
 
 
-class NewsletterQuoteBlockRequired(TypedDict):
+class NewsletterQuoteBlockRequired(NewsletterBlockConditions):
     type: Literal["quote"]
     body: str
 
@@ -190,11 +207,11 @@ class NewsletterQuoteBlock(NewsletterQuoteBlockRequired, total=False):
     cite: str | None
 
 
-class NewsletterDividerBlock(TypedDict):
+class NewsletterDividerBlock(NewsletterBlockConditions):
     type: Literal["divider"]
 
 
-class NewsletterSpacerBlockRequired(TypedDict):
+class NewsletterSpacerBlockRequired(NewsletterBlockConditions):
     type: Literal["spacer"]
 
 
@@ -202,12 +219,12 @@ class NewsletterSpacerBlock(NewsletterSpacerBlockRequired, total=False):
     height: int
 
 
-class NewsletterCodeBlock(TypedDict):
+class NewsletterCodeBlock(NewsletterBlockConditions):
     type: Literal["code"]
     code: str
 
 
-class NewsletterCustomHtmlBlock(TypedDict):
+class NewsletterCustomHtmlBlock(NewsletterBlockConditions):
     type: Literal["custom_html"]
     html: str
 

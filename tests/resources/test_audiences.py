@@ -53,6 +53,16 @@ mock_subscriber = {
 }
 
 
+mock_confirmation_resend = {
+    "object": "confirmation_resend",
+    "audience_id": "aud_123",
+    "sent": 1,
+    "failed": 0,
+    "skipped": {"not_found": 0, "not_pending": 0, "too_old": 0, "resend_limit": 0, "recently_sent": 0},
+    "remaining": 0,
+}
+
+
 class TestAudiences:
     def test_create_sends_post_with_consent_source(self) -> None:
         def handler(request: httpx.Request) -> httpx.Response:
@@ -165,6 +175,26 @@ class TestSubscribers:
         )
         assert subscriber["status"] == "subscribed"
 
+    def test_resend_confirmation_sends_post_with_subscriber_ids(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert request.method == "POST"
+            assert request.url.path == "/v1/audiences/aud_123/subscribers/resend-confirmation"
+            assert json.loads(request.content) == {"subscriber_ids": ["audmem_1"]}
+            return json_response(mock_confirmation_resend)
+
+        client = make_client(handler)
+        result = client.audiences.subscribers.resend_confirmation("aud_123", {"subscriber_ids": ["audmem_1"]})
+        assert result["sent"] == 1
+        assert result["skipped"]["too_old"] == 0
+
+    def test_resend_confirmation_without_params_sends_empty_body(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert json.loads(request.content) == {}
+            return json_response(mock_confirmation_resend)
+
+        client = make_client(handler)
+        assert client.audiences.subscribers.resend_confirmation("aud_123")["object"] == "confirmation_resend"
+
     def test_remove_returns_none(self) -> None:
         def handler(request: httpx.Request) -> httpx.Response:
             assert request.method == "DELETE"
@@ -234,6 +264,21 @@ class TestAudienceFeeds:
             "/v1/audiences/aud_123/feed/rotate",
             "/v1/audiences/aud_123/feed/revoke",
         ]
+
+
+class TestAsyncSubscribers:
+    @pytest.mark.asyncio
+    async def test_resend_confirmation_sends_post(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert request.method == "POST"
+            assert request.url.path == "/v1/audiences/aud_123/subscribers/resend-confirmation"
+            assert json.loads(request.content) == {}
+            return json_response(mock_confirmation_resend)
+
+        client = make_async_client(handler)
+        result = await client.audiences.subscribers.resend_confirmation("aud_123")
+        await client.aclose()
+        assert result["remaining"] == 0
 
 
 class TestAsyncAudienceFeeds:

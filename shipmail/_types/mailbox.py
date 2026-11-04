@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Literal, TypedDict
 
 from .common import EmailRecipientInput, PaginationParams
+from .customer import ReplyTarget
 from .message import Message
 
 
@@ -405,6 +406,10 @@ class InboxThreadSummary(TypedDict):
     latest_outbound_message_id: str | None
     latest_outbound_email_id: str | None
     latest_outbound_at: str | None
+    # The customer this conversation belongs to, if any.
+    customer_id: str | None
+    # The open reply clock. None when no reply is owed or reply times are off.
+    reply_target: ReplyTarget | None
 
 
 class InboxThreadsPagination(TypedDict):
@@ -507,6 +512,8 @@ class InboxThread(TypedDict):
     conversation_id: str | None
     # Current conversation version: pass it as expected_version to create_inbox_reply_draft.
     version: int | None
+    customer_id: str | None
+    reply_target: ReplyTarget | None
     data: list[InboxFullMessage]
 
 

@@ -221,6 +221,22 @@ analytics = client.messages.list_analytics({
 # Follow analytics["pagination"]["next_cursor"], then persist snapshot_at.
 ```
 
+### SMTP credentials
+
+An SMTP credential sends as one transactional sender's address from any SMTP client, such as Supabase Auth or a framework mailer. Messages it sends count as transactional email, like `messages.send` from that sender. A sender has at most 5 credentials.
+
+```python
+credential = client.smtp_credentials.create({
+    "from": "notifications@notify.example.com",
+    "name": "Supabase Auth",
+})
+print(credential["host"], credential["ports"], credential["username"], credential["password"])
+client.smtp_credentials.list({"from": "notifications@notify.example.com"})
+client.smtp_credentials.revoke(credential["id"])
+```
+
+`password` appears only in the `create` response. `create` refuses an `idempotency_key`.
+
 ### Scheduled messages and attachments
 
 Stage raw files up to 25 MB and use the returned opaque ID instead of embedding base64 in JSON.

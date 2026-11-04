@@ -25,6 +25,7 @@ from .resources.booking_page import AsyncBookingPages, SyncBookingPages
 from .resources.calendar import AsyncCalendar, SyncCalendar
 from .resources.capabilities import AsyncCapabilities, SyncCapabilities
 from .resources.organization import AsyncOrganization, SyncOrganization
+from .resources.customers import AsyncCustomers, SyncCustomers
 from .resources.domains import AsyncDomains, SyncDomains
 from .resources.mailboxes import AsyncMailboxes, SyncMailboxes
 from .resources.members import AsyncMembers, SyncMembers
@@ -32,6 +33,7 @@ from .resources.messages import AsyncMessages, SyncMessages
 from .resources.newsletters import AsyncNewsletters, SyncNewsletters
 from .resources.reply_scans import AsyncReplyScans, SyncReplyScans
 from .resources.scheduled_messages import AsyncScheduledMessages, SyncScheduledMessages
+from .resources.smtp_credentials import AsyncSmtpCredentials, SyncSmtpCredentials
 from .resources.status import AsyncStatus, SyncStatus
 from .resources.suppressions import AsyncSuppressions, SyncSuppressions
 from .resources.templates import AsyncTemplates, SyncTemplates
@@ -48,6 +50,7 @@ class Shipmail(BaseClient):
     booking_pages: SyncBookingPages
     calendar: SyncCalendar
     capabilities: SyncCapabilities
+    customers: SyncCustomers
     domains: SyncDomains
     mailboxes: SyncMailboxes
     members: SyncMembers
@@ -56,6 +59,7 @@ class Shipmail(BaseClient):
     organization: SyncOrganization
     reply_scans: SyncReplyScans
     scheduled_messages: SyncScheduledMessages
+    smtp_credentials: SyncSmtpCredentials
     suppressions: SyncSuppressions
     templates: SyncTemplates
     threads: SyncThreads
@@ -88,6 +92,7 @@ class Shipmail(BaseClient):
         self.booking_pages = SyncBookingPages(self)
         self.calendar = SyncCalendar(self)
         self.capabilities = SyncCapabilities(self)
+        self.customers = SyncCustomers(self)
         self.domains = SyncDomains(self)
         self.mailboxes = SyncMailboxes(self)
         self.members = SyncMembers(self)
@@ -96,6 +101,7 @@ class Shipmail(BaseClient):
         self.organization = SyncOrganization(self)
         self.reply_scans = SyncReplyScans(self)
         self.scheduled_messages = SyncScheduledMessages(self)
+        self.smtp_credentials = SyncSmtpCredentials(self)
         self.suppressions = SyncSuppressions(self)
         self.templates = SyncTemplates(self)
         self.threads = SyncThreads(self)
@@ -253,6 +259,7 @@ class AsyncShipmail(BaseClient):
     booking_pages: AsyncBookingPages
     calendar: AsyncCalendar
     capabilities: AsyncCapabilities
+    customers: AsyncCustomers
     domains: AsyncDomains
     mailboxes: AsyncMailboxes
     members: AsyncMembers
@@ -261,6 +268,7 @@ class AsyncShipmail(BaseClient):
     organization: AsyncOrganization
     reply_scans: AsyncReplyScans
     scheduled_messages: AsyncScheduledMessages
+    smtp_credentials: AsyncSmtpCredentials
     suppressions: AsyncSuppressions
     templates: AsyncTemplates
     threads: AsyncThreads
@@ -293,6 +301,7 @@ class AsyncShipmail(BaseClient):
         self.booking_pages = AsyncBookingPages(self)
         self.calendar = AsyncCalendar(self)
         self.capabilities = AsyncCapabilities(self)
+        self.customers = AsyncCustomers(self)
         self.domains = AsyncDomains(self)
         self.mailboxes = AsyncMailboxes(self)
         self.members = AsyncMembers(self)
@@ -301,6 +310,7 @@ class AsyncShipmail(BaseClient):
         self.organization = AsyncOrganization(self)
         self.reply_scans = AsyncReplyScans(self)
         self.scheduled_messages = AsyncScheduledMessages(self)
+        self.smtp_credentials = AsyncSmtpCredentials(self)
         self.suppressions = AsyncSuppressions(self)
         self.templates = AsyncTemplates(self)
         self.threads = AsyncThreads(self)

@@ -126,6 +126,27 @@ class ResubscribeSubscriberParams(TypedDict):
     consent_source: str
 
 
+class ResendSubscriberConfirmationParams(TypedDict, total=False):
+    subscriber_ids: list[str]
+
+
+class ConfirmationResendSkipped(TypedDict):
+    not_found: int
+    not_pending: int
+    too_old: int
+    resend_limit: int
+    recently_sent: int
+
+
+class ConfirmationResend(TypedDict):
+    object: Literal["confirmation_resend"]
+    audience_id: str
+    sent: int
+    failed: int
+    skipped: ConfirmationResendSkipped
+    remaining: int
+
+
 class SubscriberResult(TypedDict):
     email_address: str
     outcome: SubscriberOutcome

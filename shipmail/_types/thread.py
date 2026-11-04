@@ -43,4 +43,5 @@ class ReplyToThreadParams(_ReplyToThreadRequired, total=False):
     bcc: list[EmailRecipientInput]
     scheduled_at: str
     track_reply: bool
+    add_signature: bool
     sandbox_outcome: SandboxOutcome

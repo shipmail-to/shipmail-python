@@ -346,3 +346,37 @@ class TestReply:
             },
         )
         assert message["id"] == "msg_123"
+
+
+invitation_response = {
+    "object": "invitation_response",
+    "message_id": "msg_123",
+    "response": "accepted",
+    "replied": True,
+    "calendar_event_id": "evt_1",
+}
+
+
+class TestRespondToInvitation:
+    def test_sends_post_messages_id_invitation(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert request.method == "POST"
+            assert request.url.path == "/v1/messages/msg_123/invitation"
+            assert json.loads(request.content) == {"response": "accepted"}
+            return json_response(invitation_response)
+
+        client = make_client(handler)
+        result = client.messages.respond_to_invitation("msg_123", {"response": "accepted"})
+        assert result["calendar_event_id"] == "evt_1"
+        assert result["replied"] is True
+
+    @pytest.mark.asyncio
+    async def test_async_sends_post_messages_id_invitation(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert request.url.path == "/v1/messages/msg_123/invitation"
+            assert json.loads(request.content) == {"response": "declined"}
+            return json_response({**invitation_response, "response": "declined"})
+
+        client = make_async_client(handler)
+        result = await client.messages.respond_to_invitation("msg_123", {"response": "declined"})
+        assert result["response"] == "declined"

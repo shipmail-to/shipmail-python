@@ -107,3 +107,18 @@ class WebhookEvent(TypedDict):
     created_at: str
     test: bool
     data: Any
+
+
+class WebhookInvitation(TypedDict):
+    """The calendar invitation a ``message.received`` event carries in ``data["invitation"]``, or ``None``."""
+
+    method: Literal["request", "cancel", "reply", "other"]
+    uid: str
+    sequence: int
+    title: str | None
+    start: str | None
+    end: str | None
+    all_day: bool
+    timezone: str | None
+    organizer_email: str | None
+    calendar_event_id: str | None
