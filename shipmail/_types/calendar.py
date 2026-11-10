@@ -54,9 +54,18 @@ class CalendarAttendee(CalendarPerson):
     status: Literal["needs-action", "accepted", "declined", "tentative"]
 
 
+CalendarInvitationSkipReason = Literal["send_invitations_false", "send_guest_updates_false"]
+
+
 class CalendarInvitationOutcome(TypedDict):
     recipient: str
     status: Literal["sent", "failed", "unknown"]
+
+
+class CalendarInvitationSkip(TypedDict):
+    # An attendee who was not emailed because the request turned invitations or updates off.
+    recipient: str
+    reason: CalendarInvitationSkipReason
 
 
 class CalendarEvent(TypedDict):
@@ -91,6 +100,8 @@ class CalendarEvent(TypedDict):
 
 class CalendarEventMutationResult(CalendarEvent):
     invitation_outcomes: list[CalendarInvitationOutcome]
+    # Attendees who were not emailed because the request turned sending off. Never retried.
+    invitation_skipped: list[CalendarInvitationSkip]
     invitation_failures: list[str]
 
 
@@ -144,6 +155,8 @@ class CreateCalendarEventParams(_CreateCalendarEventRequired, total=False):
     calendar_id: str
     invitation_language: CalendarInvitationLanguage
     description: str
+    # A timed event without one uses the calendar time zone of the person behind the credential,
+    # then the organization's default_timezone, then Etc/UTC.
     timezone: str
     duration: str
     all_day: bool
@@ -193,6 +206,8 @@ _CalendarAvailabilityRequired = TypedDict(
 class CalendarAvailabilityParams(_CalendarAvailabilityRequired, total=False):
     duration: int
     interval: int
+    # Defaults to the calendar time zone of the person behind the credential, then the
+    # organization's default_timezone, then Etc/UTC.
     timezone: str
     days: list[int]
     window_start: int

@@ -344,9 +344,26 @@ InboxFullMessage = TypedDict(
         "attachments": list[InboxAttachment],
         "authentication_results": EmailAuthenticationResults | None,
         "reply_text": str | None,
+        "category": Literal["human", "out_of_office", "auto_reply", "bounce", "bulk", "notification"] | None,
+        "out_of_office_until": str | None,
         "security": InboxMessageSecurity,
     },
 )
+
+
+class DeliveryStatus(TypedDict):
+    # What a bounce or other delivery report (RFC 3464) says, for the first failed recipient or
+    # else the first.
+    status: str | None  # enhanced status code, such as "5.1.1"
+    action: str | None  # failed, delayed, delivered, relayed or expanded
+    diagnostic_code: str | None
+    final_recipient: str | None
+    reporting_mta: str | None
+
+
+class InboxMessageDetail(InboxFullMessage):
+    # One message read by id. Null for messages that are not delivery reports and for held ones.
+    delivery_status: DeliveryStatus | None
 
 
 class InboxMessageSecurityReview(TypedDict):
@@ -445,6 +462,9 @@ class InboxDraftRecipient(TypedDict):
 
 
 class InboxDraftAttachment(TypedDict):
+    # Names the file in the stored draft as it is now. It changes after every update; read the
+    # draft again for current ids.
+    id: str
     name: str | None
     type: str
     size: int
@@ -454,14 +474,18 @@ InboxDraft = TypedDict(
     "InboxDraft",
     {
         "object": Literal["inbox_draft"],
-        # Inbox message ID: usable with get_inbox_message.
+        # The draft's id. It stays the same when update_inbox_draft corrects the draft.
         "id": str,
+        # Inbox message that holds the draft now: usable with get_inbox_message.
+        "message_id": str,
         "mailbox_id": str,
         "from": InboxDraftRecipient,
         "to": list[InboxDraftRecipient],
         "cc": list[InboxDraftRecipient],
         "bcc": list[InboxDraftRecipient],
         "subject": str,
+        "html": str | None,
+        "text": str | None,
         # Formatting the HTML sanitiser dropped, such as "table" or "h4".
         "removed_formatting": list[str],
         "created_at": str,
@@ -647,6 +671,33 @@ class CreateInboxDraftParams(_CreateInboxDraftParamsRequired, total=False):
     staged_attachment_ids: list[str]
 
 
+class DraftAttachmentById(TypedDict):
+    # A file the draft has now, by its current id.
+    id: str
+
+
+class DraftAttachmentByStagedUpload(TypedDict):
+    # A new file from the staged attachment flow.
+    staged_attachment_id: str
+
+
+# A file a draft should carry after an update.
+DraftAttachmentSelection = DraftAttachmentById | DraftAttachmentByStagedUpload
+
+
+class UpdateInboxDraftParams(TypedDict, total=False):
+    # Name only what changes. text or html replaces the whole body, and files stay unless
+    # attachments is given.
+    to: list[EmailRecipientInput]
+    cc: list[EmailRecipientInput]
+    bcc: list[EmailRecipientInput]
+    subject: str
+    text: str
+    html: str
+    # Replaces the draft's files, in this order, at most 20 and 25 MB in total. [] removes them all.
+    attachments: list[DraftAttachmentSelection]
+
+
 class _CreateInboxReplyDraftParamsRequired(TypedDict):
     expected_version: int
 
@@ -660,9 +711,12 @@ class CreateInboxReplyDraftParams(_CreateInboxReplyDraftParamsRequired, total=Fa
 
 
 class UpdateInboxReplyDraftParams(TypedDict, total=False):
-    # The new body replaces the old one. html alone derives the text part.
+    # The new body replaces the old one. html alone derives the text part. Send html, text or
+    # attachments; without html and text the body stays.
     text: str
     html: str
+    # Replaces the draft's files, in this order, at most 20 and 25 MB in total. [] removes them all.
+    attachments: list[DraftAttachmentSelection]
 
 
 class _UpdateInboxThreadAttentionParamsRequired(TypedDict):

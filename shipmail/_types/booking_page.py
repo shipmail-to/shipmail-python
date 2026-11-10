@@ -20,6 +20,7 @@ class BookingPage(TypedDict):
     window_start_minutes: int
     window_end_minutes: int
     timezone: str
+    lock_timezone: bool
     buffer_minutes: int
     minimum_notice_minutes: int
     max_advance_days: int
@@ -45,6 +46,7 @@ class _CreateBookingPageRequired(TypedDict):
 
 class CreateBookingPageParams(_CreateBookingPageRequired, total=False):
     description: str | None
+    lock_timezone: bool
     buffer_minutes: int
     minimum_notice_minutes: int
     max_advance_days: int
@@ -61,9 +63,34 @@ class UpdateBookingPageParams(TypedDict, total=False):
     window_start_minutes: int
     window_end_minutes: int
     timezone: str
+    lock_timezone: bool
     description: str | None
     buffer_minutes: int
     minimum_notice_minutes: int
     max_advance_days: int
     conferencing_provider: ConferencingProviderId | None
     active: bool
+
+
+class BookingPageSlot(TypedDict):
+    start: str
+    end: str
+
+
+BookingPageSlots = TypedDict(
+    "BookingPageSlots",
+    {
+        "object": Literal["booking_page_slots"],
+        "booking_page_id": str,
+        "timezone": str,
+        "duration_minutes": int,
+        "from": str,
+        "to": str,
+        "slots": list[BookingPageSlot],
+    },
+)
+
+# ISO 8601 instants. "from" defaults to now, "to" to the end of the page's booking horizon.
+GetBookingPageSlotsParams = TypedDict(
+    "GetBookingPageSlotsParams", {"from": str, "to": str}, total=False
+)

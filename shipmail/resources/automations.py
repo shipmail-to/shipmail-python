@@ -10,8 +10,10 @@ if TYPE_CHECKING:
     from .._types.automation import (
         Automation,
         AutomationRun,
+        AutomationTest,
         CreateAutomationParams,
         ListAutomationsResponse,
+        TestAutomationParams,
         UpdateAutomationParams,
     )
     from .._types.common import MethodOptions
@@ -51,6 +53,18 @@ class SyncAutomations:
             )
         )
 
+    def test(
+        self, id: str, params: TestAutomationParams, options: MethodOptions | None = None
+    ) -> AutomationTest:
+        """Dry-run the automation on one stored inbox message. Nothing is changed, queued or sent.
+
+        Needs automations:read and messages:read. A semantic condition calls the classifier only when
+        every other condition matched, and that call counts against the AI budget.
+        """
+        return self._client.request(
+            RequestOptions(method="POST", path=f"{_automation(id)}/test", body=params, method_options=options)
+        )
+
     def run(self, id: str, options: MethodOptions | None = None) -> AutomationRun:
         return self._client.request(
             RequestOptions(method="POST", path=f"{_automation(id)}/run", method_options=options)
@@ -85,6 +99,18 @@ class AsyncAutomations:
             RequestOptions(
                 method="PATCH", path=_automation(id), body=params, method_options=options
             )
+        )
+
+    async def test(
+        self, id: str, params: TestAutomationParams, options: MethodOptions | None = None
+    ) -> AutomationTest:
+        """Dry-run the automation on one stored inbox message. Nothing is changed, queued or sent.
+
+        Needs automations:read and messages:read. A semantic condition calls the classifier only when
+        every other condition matched, and that call counts against the AI budget.
+        """
+        return await self._client.request(
+            RequestOptions(method="POST", path=f"{_automation(id)}/test", body=params, method_options=options)
         )
 
     async def run(self, id: str, options: MethodOptions | None = None) -> AutomationRun:

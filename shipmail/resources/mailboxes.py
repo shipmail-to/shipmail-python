@@ -24,6 +24,7 @@ if TYPE_CHECKING:
         ImportUpload,
         InboxDraft,
         InboxFullMessage,
+        InboxMessageDetail,
         InboxMessageAction,
         InboxMessages,
         InboxMessageSecurityReview,
@@ -50,16 +51,17 @@ if TYPE_CHECKING:
         MailboxImports,
         MailboxRules,
         MoveInboxMessageParams,
+        ReleaseInboxMessageSecurityParams,
         RestoreMailboxImportParams,
         ResetMailboxPasswordParams,
-        ReleaseInboxMessageSecurityParams,
         UpdateAutoReplyParams,
+        UpdateInboxDraftParams,
         UpdateInboxMessageParams,
         UpdateInboxReplyDraftParams,
         UpdateInboxThreadAttentionParams,
+        UpdateMailboxDeliveryRoutingParams,
         UpdateMailboxFolderParams,
         UpdateMailboxParams,
-        UpdateMailboxDeliveryRoutingParams,
         UpdateMailboxRulesParams,
     )
     from .._types.message import (
@@ -275,7 +277,7 @@ class SyncMailboxes:
             )
         )
 
-    def get_inbox_message(self, id: str, message_id: str, options: MethodOptions | None = None) -> InboxFullMessage:
+    def get_inbox_message(self, id: str, message_id: str, options: MethodOptions | None = None) -> InboxMessageDetail:
         return self._client.request(
             RequestOptions(
                 method="GET",
@@ -359,6 +361,47 @@ class SyncMailboxes:
             RequestOptions(
                 method="POST",
                 path=f"/mailboxes/{quote(id, safe='')}/inbox/drafts",
+                body=params,
+                method_options=options,
+            )
+        )
+
+    def get_inbox_draft(self, id: str, draft_id: str, options: MethodOptions | None = None) -> InboxDraft:
+        """Read a draft from create_inbox_draft. Not found once a person sent or deleted it."""
+        return self._client.request(
+            RequestOptions(
+                method="GET",
+                path=f"/mailboxes/{quote(id, safe='')}/inbox/drafts/{quote(draft_id, safe='')}",
+                method_options=options,
+            )
+        )
+
+    def delete_inbox_draft(self, id: str, draft_id: str, options: MethodOptions | None = None) -> None:
+        """Delete a draft from create_inbox_draft.
+
+        Refused with a conflict while a send holds it, it waits in a scheduled send, or a person took
+        it over in the inbox composer.
+        """
+        self._client.request(
+            RequestOptions(
+                method="DELETE",
+                path=f"/mailboxes/{quote(id, safe='')}/inbox/drafts/{quote(draft_id, safe='')}",
+                method_options=options,
+            )
+        )
+
+    def update_inbox_draft(
+        self,
+        id: str,
+        draft_id: str,
+        params: UpdateInboxDraftParams,
+        options: MethodOptions | None = None,
+    ) -> InboxDraft:
+        """Correct a draft from create_inbox_draft. Its id and review_url stay the same."""
+        return self._client.request(
+            RequestOptions(
+                method="PATCH",
+                path=f"/mailboxes/{quote(id, safe='')}/inbox/drafts/{quote(draft_id, safe='')}",
                 body=params,
                 method_options=options,
             )
@@ -500,6 +543,21 @@ class SyncMailboxes:
                 method="POST",
                 path=f"/mailboxes/{quote(id, safe='')}/inbox/threads/{quote(thread_id, safe='')}/reply",
                 body=params,
+                method_options=options,
+            )
+        )
+
+    def download_inbox_message_raw(
+        self, id: str, message_id: str, options: MethodOptions | None = None
+    ) -> bytes:
+        """The stored message as message/rfc822 bytes (an .eml file), inbound or sent.
+
+        A message held for security review needs ``messages:review``. Refused over 25 MB.
+        """
+        return self._client.request_bytes(
+            RequestOptions(
+                method="GET",
+                path=f"/mailboxes/{quote(id, safe='')}/inbox/messages/{quote(message_id, safe='')}/raw",
                 method_options=options,
             )
         )
@@ -971,7 +1029,7 @@ class AsyncMailboxes:
 
     async def get_inbox_message(
         self, id: str, message_id: str, options: MethodOptions | None = None
-    ) -> InboxFullMessage:
+    ) -> InboxMessageDetail:
         return await self._client.request(
             RequestOptions(
                 method="GET",
@@ -1055,6 +1113,47 @@ class AsyncMailboxes:
             RequestOptions(
                 method="POST",
                 path=f"/mailboxes/{quote(id, safe='')}/inbox/drafts",
+                body=params,
+                method_options=options,
+            )
+        )
+
+    async def get_inbox_draft(self, id: str, draft_id: str, options: MethodOptions | None = None) -> InboxDraft:
+        """Read a draft from create_inbox_draft. Not found once a person sent or deleted it."""
+        return await self._client.request(
+            RequestOptions(
+                method="GET",
+                path=f"/mailboxes/{quote(id, safe='')}/inbox/drafts/{quote(draft_id, safe='')}",
+                method_options=options,
+            )
+        )
+
+    async def delete_inbox_draft(self, id: str, draft_id: str, options: MethodOptions | None = None) -> None:
+        """Delete a draft from create_inbox_draft.
+
+        Refused with a conflict while a send holds it, it waits in a scheduled send, or a person took
+        it over in the inbox composer.
+        """
+        await self._client.request(
+            RequestOptions(
+                method="DELETE",
+                path=f"/mailboxes/{quote(id, safe='')}/inbox/drafts/{quote(draft_id, safe='')}",
+                method_options=options,
+            )
+        )
+
+    async def update_inbox_draft(
+        self,
+        id: str,
+        draft_id: str,
+        params: UpdateInboxDraftParams,
+        options: MethodOptions | None = None,
+    ) -> InboxDraft:
+        """Correct a draft from create_inbox_draft. Its id and review_url stay the same."""
+        return await self._client.request(
+            RequestOptions(
+                method="PATCH",
+                path=f"/mailboxes/{quote(id, safe='')}/inbox/drafts/{quote(draft_id, safe='')}",
                 body=params,
                 method_options=options,
             )
@@ -1196,6 +1295,21 @@ class AsyncMailboxes:
                 method="POST",
                 path=f"/mailboxes/{quote(id, safe='')}/inbox/threads/{quote(thread_id, safe='')}/reply",
                 body=params,
+                method_options=options,
+            )
+        )
+
+    async def download_inbox_message_raw(
+        self, id: str, message_id: str, options: MethodOptions | None = None
+    ) -> bytes:
+        """The stored message as message/rfc822 bytes (an .eml file), inbound or sent.
+
+        A message held for security review needs ``messages:review``. Refused over 25 MB.
+        """
+        return await self._client.request_bytes(
+            RequestOptions(
+                method="GET",
+                path=f"/mailboxes/{quote(id, safe='')}/inbox/messages/{quote(message_id, safe='')}/raw",
                 method_options=options,
             )
         )

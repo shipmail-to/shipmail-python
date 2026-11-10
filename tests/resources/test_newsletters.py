@@ -25,6 +25,7 @@ mock_newsletter = {
     "body_text": "Hello",
     "status": "draft",
     "archive_visibility": "private",
+    "view_in_browser": True,
     "feed_entry_url": None,
     "styling_mode": "styled",
     "track_engagement": False,
@@ -259,6 +260,87 @@ class TestNewsletters:
         result = client.newsletters.sender_identities.list({"limit": 10})
         assert result["data"][0]["id"] == "nwsid_123"
 
+    def test_domain_setup_reaches_create_verify_and_delete(self) -> None:
+        calls: list[tuple[str, str, object]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            body = json.loads(request.content) if request.content else None
+            calls.append((request.method, request.url.path, body))
+            if request.method == "DELETE":
+                return httpx.Response(204)
+            return json_response(mock_newsletter_domain)
+
+        client = make_client(handler)
+        client.newsletters.domains.create(
+            {"root_domain": "example.com", "reply_to_address": "hello@example.com"}
+        )
+        client.newsletters.domains.verify("nwsdom_123")
+        client.newsletters.domains.delete("nwsdom_123")
+        assert calls == [
+            (
+                "POST",
+                "/v1/newsletter-domains",
+                {"root_domain": "example.com", "reply_to_address": "hello@example.com"},
+            ),
+            ("POST", "/v1/newsletter-domains/nwsdom_123/verify", None),
+            ("DELETE", "/v1/newsletter-domains/nwsdom_123", None),
+        ]
+
+    def test_sender_identity_writes(self) -> None:
+        calls: list[tuple[str, str, object]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            body = json.loads(request.content) if request.content else None
+            calls.append((request.method, request.url.path, body))
+            if request.method == "DELETE":
+                return httpx.Response(204)
+            return json_response(mock_newsletter_sender_identity)
+
+        client = make_client(handler)
+        client.newsletters.sender_identities.create(
+            {"newsletter_domain_id": "nwsdom_123", "from_name": "Acme", "business_name": "Acme Ltd."}
+        )
+        client.newsletters.sender_identities.update("nwsid_123", {"make_default": True})
+        assert client.newsletters.sender_identities.delete("nwsid_123") is None
+        assert [call[:2] for call in calls] == [
+            ("POST", "/v1/newsletter-sender-identities"),
+            ("PATCH", "/v1/newsletter-sender-identities/nwsid_123"),
+            ("DELETE", "/v1/newsletter-sender-identities/nwsid_123"),
+        ]
+        assert calls[1][2] == {"make_default": True}
+
+    @pytest.mark.asyncio
+    async def test_async_domain_setup(self) -> None:
+        paths: list[tuple[str, str]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            paths.append((request.method, request.url.path))
+            if request.method == "DELETE":
+                return httpx.Response(204)
+            if "sender-identities" in request.url.path:
+                return json_response(mock_newsletter_sender_identity)
+            return json_response(mock_newsletter_domain)
+
+        client = make_async_client(handler)
+        domain = await client.newsletters.domains.create(
+            {"root_domain": "example.com", "reply_to_address": "hello@example.com"}
+        )
+        await client.newsletters.domains.verify(domain["id"])
+        await client.newsletters.sender_identities.create(
+            {"newsletter_domain_id": domain["id"], "from_name": "Acme", "business_name": "Acme Ltd."}
+        )
+        await client.newsletters.sender_identities.update("nwsid_123", {"from_name": "Acme News"})
+        await client.newsletters.sender_identities.delete("nwsid_123")
+        await client.newsletters.domains.delete(domain["id"])
+        assert paths == [
+            ("POST", "/v1/newsletter-domains"),
+            ("POST", "/v1/newsletter-domains/nwsdom_123/verify"),
+            ("POST", "/v1/newsletter-sender-identities"),
+            ("PATCH", "/v1/newsletter-sender-identities/nwsid_123"),
+            ("DELETE", "/v1/newsletter-sender-identities/nwsid_123"),
+            ("DELETE", "/v1/newsletter-domains/nwsdom_123"),
+        ]
+
     def test_assets_list_sends_filters_and_cursor(self) -> None:
         response = {
             "data": [mock_newsletter_asset],
@@ -343,6 +425,7 @@ class TestNewsletters:
                 "styling_mode": "plain",
                 "track_engagement": True,
                 "add_utm_tags": True,
+                "view_in_browser": False,
             }
             return json_response(
                 {
@@ -350,6 +433,7 @@ class TestNewsletters:
                     "subject": "Updated",
                     "track_engagement": True,
                     "add_utm_tags": True,
+                    "view_in_browser": False,
                     "opened_count": 12,
                     "clicked_count": 4,
                 }
@@ -364,9 +448,11 @@ class TestNewsletters:
                 "styling_mode": "plain",
                 "track_engagement": True,
                 "add_utm_tags": True,
+                "view_in_browser": False,
             },
         )
         assert newsletter["subject"] == "Updated"
+        assert newsletter["view_in_browser"] is False
         assert newsletter["track_engagement"] is True
         assert newsletter["add_utm_tags"] is True
         assert newsletter["opened_count"] == 12
@@ -484,6 +570,7 @@ class TestAsyncNewsletters:
                 ],
                 "styling_mode": "plain",
                 "add_utm_tags": True,
+                "view_in_browser": False,
             }
         )
         await client.newsletters.update(
@@ -497,6 +584,7 @@ class TestAsyncNewsletters:
                 ],
                 "styling_mode": "styled",
                 "add_utm_tags": False,
+                "view_in_browser": True,
             },
         )
         await client.aclose()
@@ -509,3 +597,188 @@ class TestAsyncNewsletters:
         )
         assert [payload["styling_mode"] for payload in payloads] == ["plain", "styled"]
         assert [payload["add_utm_tags"] for payload in payloads] == [True, False]
+        assert [payload["view_in_browser"] for payload in payloads] == [False, True]
+
+
+mock_newsletter_recipient = {
+    "object": "newsletter_recipient",
+    "id": "nwsrcp_1",
+    "newsletter_id": "nws_123",
+    "email_address": "reader@example.com",
+    "status": "skipped",
+    "reason": "opted_out",
+    "subscriber_id": "audmem_1",
+    "sent_at": None,
+    "delivered_at": None,
+    "bounced_at": None,
+    "complained_at": None,
+    "unsubscribed_at": None,
+    "created_at": "2026-07-01T00:00:00Z",
+}
+
+mock_newsletter_preview = {
+    "object": "newsletter_preview",
+    "newsletter_id": "nws_123",
+    "subject": "What shipped in July, Jane",
+    "html": "<p>Hello Jane</p>",
+    "archive_html": "<p>Hello</p>",
+    "text": "Hello Jane",
+    "headers": {
+        "List-Unsubscribe": "<https://shipmail.to/unsubscribe/token>",
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    },
+    "warnings": [],
+    "url_breakdown": {"total": 0, "counted": [], "ignored": []},
+}
+
+
+class TestNewsletterConsent:
+    def test_preview_defaults_to_an_empty_body(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert request.method == "POST"
+            assert request.url.path == "/v1/newsletters/nws_123/preview"
+            assert json.loads(request.content) == {}
+            return json_response(mock_newsletter_preview)
+
+        client = make_client(handler)
+        preview = client.newsletters.preview("nws_123")
+        assert preview["subject"] == "What shipped in July, Jane"
+        assert preview["headers"]["List-Unsubscribe-Post"] == "List-Unsubscribe=One-Click"
+
+    def test_preview_as_a_subscriber_sends_preview_as(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert json.loads(request.content) == {
+                "preview_as": {"type": "subscriber", "subscriber_id": "audmem_1"}
+            }
+            return json_response(mock_newsletter_preview)
+
+        client = make_client(handler)
+        client.newsletters.preview(
+            "nws_123", {"preview_as": {"type": "subscriber", "subscriber_id": "audmem_1"}}
+        )
+
+    def test_domain_and_sender_identity_get(self) -> None:
+        paths: list[tuple[str, str]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            paths.append((request.method, request.url.path))
+            if "sender-identities" in request.url.path:
+                return json_response(mock_newsletter_sender_identity)
+            return json_response(mock_newsletter_domain)
+
+        client = make_client(handler)
+        domain = client.newsletters.domains.get("nwsdom_123")
+        identity = client.newsletters.sender_identities.get("nwsid_123")
+        assert domain["object"] == "newsletter_domain"
+        assert identity["object"] == "newsletter_sender_identity"
+        assert paths == [
+            ("GET", "/v1/newsletter-domains/nwsdom_123"),
+            ("GET", "/v1/newsletter-sender-identities/nwsid_123"),
+        ]
+
+    def test_sender_identity_create_sends_make_default_false(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert json.loads(request.content)["make_default"] is False
+            return json_response({**mock_newsletter_sender_identity, "is_default": False})
+
+        client = make_client(handler)
+        identity = client.newsletters.sender_identities.create(
+            {
+                "newsletter_domain_id": "nwsdom_123",
+                "from_name": "Acme",
+                "business_name": "Acme Ltd.",
+                "make_default": False,
+            }
+        )
+        assert identity["is_default"] is False
+
+    def test_recipients_list_forwards_filters(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert request.method == "GET"
+            assert request.url.path == "/v1/newsletters/nws_123/recipients"
+            assert dict(request.url.params) == {
+                "cursor": "c1",
+                "limit": "10",
+                "status": "skipped",
+                "reason": "opted_out",
+            }
+            return json_response(
+                {"data": [mock_newsletter_recipient], "pagination": {"next_cursor": None, "has_more": False}}
+            )
+
+        client = make_client(handler)
+        result = client.newsletters.recipients.list(
+            "nws_123", {"cursor": "c1", "limit": 10, "status": "skipped", "reason": "opted_out"}
+        )
+        assert result["data"][0]["reason"] == "opted_out"
+
+    def test_recipients_auto_paginate_follow_the_cursor(self) -> None:
+        cursors: list[str | None] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            cursor = request.url.params.get("cursor")
+            cursors.append(cursor)
+            assert request.url.params.get("status") == "bounced"
+            if cursor is None:
+                return json_response(
+                    {"data": [mock_newsletter_recipient], "pagination": {"next_cursor": "c2", "has_more": True}}
+                )
+            return json_response(
+                {
+                    "data": [{**mock_newsletter_recipient, "id": "nwsrcp_2"}],
+                    "pagination": {"next_cursor": None, "has_more": False},
+                }
+            )
+
+        client = make_client(handler)
+        ids = [r["id"] for r in client.newsletters.recipients.list_auto_paginating("nws_123", status="bounced")]
+        assert ids == ["nwsrcp_1", "nwsrcp_2"]
+        assert cursors == [None, "c2"]
+
+    def test_recipient_get_by_email_encodes_the_address(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert "/v1/newsletters/nws_123/recipients/by-email/reader%40example.com" in str(request.url)
+            return json_response(mock_newsletter_recipient)
+
+        client = make_client(handler)
+        recipient = client.newsletters.recipients.get_by_email("nws_123", "reader@example.com")
+        assert recipient["status"] == "skipped"
+
+
+class TestAsyncNewsletterConsent:
+    @pytest.mark.asyncio
+    async def test_preview_gets_and_recipients(self) -> None:
+        calls: list[tuple[str, str]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            calls.append((request.method, request.url.path))
+            path = request.url.path
+            if path.endswith("/preview"):
+                assert json.loads(request.content) == {"preview_as": {"type": "sample"}}
+                return json_response(mock_newsletter_preview)
+            if "sender-identities" in path:
+                return json_response(mock_newsletter_sender_identity)
+            if "newsletter-domains" in path:
+                return json_response(mock_newsletter_domain)
+            if "/by-email/" in path:
+                return json_response(mock_newsletter_recipient)
+            return json_response(
+                {"data": [mock_newsletter_recipient], "pagination": {"next_cursor": None, "has_more": False}}
+            )
+
+        client = make_async_client(handler)
+        await client.newsletters.preview("nws_123", {"preview_as": {"type": "sample"}})
+        await client.newsletters.domains.get("nwsdom_123")
+        await client.newsletters.sender_identities.get("nwsid_123")
+        await client.newsletters.recipients.list("nws_123")
+        ids = [r["id"] async for r in client.newsletters.recipients.list_auto_paginating("nws_123")]
+        await client.newsletters.recipients.get_by_email("nws_123", "reader@example.com")
+        assert ids == ["nwsrcp_1"]
+        assert calls == [
+            ("POST", "/v1/newsletters/nws_123/preview"),
+            ("GET", "/v1/newsletter-domains/nwsdom_123"),
+            ("GET", "/v1/newsletter-sender-identities/nwsid_123"),
+            ("GET", "/v1/newsletters/nws_123/recipients"),
+            ("GET", "/v1/newsletters/nws_123/recipients"),
+            ("GET", "/v1/newsletters/nws_123/recipients/by-email/reader@example.com"),
+        ]

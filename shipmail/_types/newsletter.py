@@ -18,6 +18,7 @@ NewsletterStatus = Literal[
     "cancelled",
     "failed",
 ]
+# "public" lists an issue on the audience's newsletter website and feed. Defaults to "private".
 NewsletterArchiveVisibility = Literal["private", "public"]
 # Where an issue goes: "email_and_website" (the default), "email" only, or "website" only.
 NewsletterPublishTarget = Literal["email_and_website", "email", "website"]
@@ -43,6 +44,37 @@ NewsletterCalloutVariant = Literal["accent", "info", "warning", "success"]
 NewsletterColumnRatio = Literal["50-50", "33-67", "67-33"]
 NewsletterColumnImageFit = Literal["natural", "contain", "cover"]
 NewsletterButtonAlign = Literal["left", "center", "right"]
+NewsletterRecipientStatus = Literal[
+    "pending",
+    "retrying",
+    "sending",
+    "sent",
+    "delivered",
+    "bounced",
+    "complained",
+    "failed",
+    "skipped",
+    "unsubscribed",
+]
+# Why a reader was skipped, or what happened after the send. Raw provider error text is never
+# returned.
+NewsletterRecipientReason = Literal[
+    "opted_out",
+    "suppressed",
+    "never_email",
+    "undeliverable_domain",
+    "dormant",
+    "last_chance_waiting",
+    "no_longer_eligible",
+    "cancelled",
+    "content_in_review",
+    "email_removed",
+    "skipped_other",
+    "bounced",
+    "complained",
+    "unsubscribed",
+    "send_failed",
+]
 
 
 class NewsletterDomain(TypedDict):
@@ -60,8 +92,33 @@ class NewsletterDomain(TypedDict):
     spf_status: NewsletterDomainRecordStatus
     dmarc_status: NewsletterDomainRecordStatus
     verified_at: str | None
+    # The records to publish at the DNS host before calling verify.
+    dns_records: list[NewsletterDomainDnsRecord]
     created_at: str
     updated_at: str
+
+
+class NewsletterDomainDnsRecord(TypedDict):
+    key: Literal["dkim", "mail_from_mx", "mail_from_spf", "dmarc"]
+    type: Literal["CNAME", "MX", "TXT"]
+    host: str
+    value: str
+    priority: int | None
+    ttl: int | None
+    description: str
+
+
+class _CreateNewsletterDomainRequired(TypedDict):
+    root_domain: str
+    reply_to_address: str
+
+
+class CreateNewsletterDomainParams(_CreateNewsletterDomainRequired, total=False):
+    # A label under root_domain ("news", the default) or the full name ("news.example.com").
+    subdomain: str
+    # The part before @ in the From address. Defaults to "updates".
+    from_local_part: str
+    reply_to_name: str
 
 
 class NewsletterSenderIdentity(TypedDict):
@@ -224,6 +281,11 @@ class NewsletterCodeBlock(NewsletterBlockConditions):
     code: str
 
 
+class NewsletterEventBlock(NewsletterBlockConditions):
+    type: Literal["event"]
+    event_id: str
+
+
 class NewsletterCustomHtmlBlock(NewsletterBlockConditions):
     type: Literal["custom_html"]
     html: str
@@ -243,6 +305,7 @@ NewsletterBlock = (
     | NewsletterDividerBlock
     | NewsletterSpacerBlock
     | NewsletterCodeBlock
+    | NewsletterEventBlock
     | NewsletterCustomHtmlBlock
 )
 
@@ -268,6 +331,8 @@ class Newsletter(TypedDict):
     status: NewsletterStatus
     archive_visibility: NewsletterArchiveVisibility
     publish_target: NewsletterPublishTarget
+    # Whether the email carries a View in browser link to the issue's own page.
+    view_in_browser: bool
     feed_entry_url: str | None
     styling_mode: NewsletterStylingMode
     track_engagement: bool
@@ -344,13 +409,63 @@ class NewsletterPreviewWarning(TypedDict):
 
 
 class NewsletterPreview(TypedDict):
+    """The email exactly as one reader receives it: footer, unsubscribe link and list headers
+    included. Preview links are never tracked."""
+
     object: Literal["newsletter_preview"]
     newsletter_id: str
+    # With merge tags rendered for the reader.
+    subject: str
     html: str
     archive_html: str
     text: str
+    # Header name to value, such as List-Unsubscribe, List-Unsubscribe-Post and Reply-To.
+    headers: dict[str, str]
     warnings: list[NewsletterPreviewWarning]
     url_breakdown: NewsletterUrlBreakdown
+
+
+class NewsletterPreviewAsSample(TypedDict):
+    type: Literal["sample"]
+
+
+class NewsletterPreviewAsSubscriber(TypedDict):
+    """Render for one reader a send would reach. Needs the audiences:read scope too."""
+
+    type: Literal["subscriber"]
+    subscriber_id: str
+
+
+NewsletterPreviewAs = NewsletterPreviewAsSample | NewsletterPreviewAsSubscriber
+
+
+class PreviewNewsletterParams(TypedDict, total=False):
+    # Defaults to {"type": "sample"}.
+    preview_as: NewsletterPreviewAs
+
+
+class NewsletterRecipient(TypedDict):
+    """One reader's result for an issue: sent, skipped and why, and what happened after."""
+
+    object: Literal["newsletter_recipient"]
+    id: str
+    newsletter_id: str
+    email_address: str
+    status: NewsletterRecipientStatus
+    reason: NewsletterRecipientReason | None
+    # None when the reader has since been removed from the audience.
+    subscriber_id: str | None
+    sent_at: str | None
+    delivered_at: str | None
+    bounced_at: str | None
+    complained_at: str | None
+    unsubscribed_at: str | None
+    created_at: str
+
+
+class ListNewsletterRecipientsParams(PaginationParams, total=False):
+    status: NewsletterRecipientStatus
+    reason: NewsletterRecipientReason
 
 
 class NewsletterTestSend(TypedDict):
@@ -381,6 +496,7 @@ class CreateNewsletterParams(_CreateNewsletterRequired, total=False):
     send_window_hours: int
     archive_visibility: NewsletterArchiveVisibility
     publish_target: NewsletterPublishTarget
+    view_in_browser: bool
     feed_entry_url: str | None
     styling_mode: NewsletterStylingMode
     track_engagement: bool
@@ -403,6 +519,7 @@ class UpdateNewsletterParams(TypedDict, total=False):
     send_window_hours: int
     archive_visibility: NewsletterArchiveVisibility
     publish_target: NewsletterPublishTarget
+    view_in_browser: bool
     feed_entry_url: str | None
     styling_mode: NewsletterStylingMode
     track_engagement: bool
@@ -469,6 +586,7 @@ class CreateNewsletterFromChangelogParams(_CreateNewsletterFromChangelogRequired
     send_window_hours: int
     archive_visibility: NewsletterArchiveVisibility
     publish_target: NewsletterPublishTarget
+    view_in_browser: bool
     feed_entry_url: str | None
     styling_mode: NewsletterStylingMode
 
@@ -479,6 +597,33 @@ class ListNewsletterDomainsParams(PaginationParams, total=False):
 
 class ListNewsletterSenderIdentitiesParams(PaginationParams, total=False):
     pass
+
+
+class _CreateNewsletterSenderIdentityRequired(TypedDict):
+    newsletter_domain_id: str
+    from_name: str
+    business_name: str
+
+
+class CreateNewsletterSenderIdentityParams(_CreateNewsletterSenderIdentityRequired, total=False):
+    postal_address: str | None
+    footer_text: str | None
+    # True makes this the default identity. False keeps it from being the default (and an
+    # identity that was the default stops being it). Omitted, the organization's first identity
+    # becomes the default and the default is otherwise unchanged.
+    make_default: bool
+
+
+class UpdateNewsletterSenderIdentityParams(TypedDict, total=False):
+    newsletter_domain_id: str
+    from_name: str
+    business_name: str
+    postal_address: str | None
+    footer_text: str | None
+    # True makes this the default identity. False keeps it from being the default (and an
+    # identity that was the default stops being it). Omitted, the organization's first identity
+    # becomes the default and the default is otherwise unchanged.
+    make_default: bool
 
 
 class ListNewslettersParams(PaginationParams, total=False):

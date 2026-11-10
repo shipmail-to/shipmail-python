@@ -288,6 +288,8 @@ mock_inbox_messages = {
                 "review": None,
             },
             "reply_text": "Accept your Linear invite",
+            "category": "human",
+            "out_of_office_until": None,
         }
     ],
     "pagination": {"limit": 10, "total": 1, "has_more": False, "next_cursor": None},
@@ -354,6 +356,8 @@ mock_inbox_thread = {
                 "review": None,
             },
             "reply_text": "Hi",
+            "category": "human",
+            "out_of_office_until": None,
         }
     ],
 }
@@ -361,12 +365,15 @@ mock_inbox_thread = {
 mock_inbox_draft = {
     "object": "inbox_draft",
     "id": "eml_draft",
+    "message_id": "eml_draft",
     "mailbox_id": "mbx_123",
     "from": {"address": "hello@example.com", "name": "Hello"},
     "to": [{"address": "jane@example.com", "name": "Jane"}],
     "cc": [{"address": "ops@example.com", "name": None}],
     "bcc": [],
     "subject": "Kickoff",
+    "html": None,
+    "text": "Hi Jane,",
     "removed_formatting": [],
     "created_at": "2026-09-24T00:00:00.000Z",
 }
@@ -1218,6 +1225,78 @@ class TestInbox:
 
         message = await make_async_client(handler).mailboxes.get_inbox_message("mbx_123", "eml_123")
         assert message["authentication_results"]["dmarc"] == "pass"
+
+    def test_downloads_raw_message(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert request.method == "GET"
+            assert request.url.path == "/v1/mailboxes/mbx_123/inbox/messages/eml_123/raw"
+            return httpx.Response(200, content=b"Subject: Hi\r\n\r\nHello", headers={"Content-Type": "message/rfc822"})
+
+        assert make_client(handler).mailboxes.download_inbox_message_raw("mbx_123", "eml_123") == (
+            b"Subject: Hi\r\n\r\nHello"
+        )
+
+    @pytest.mark.asyncio
+    async def test_downloads_raw_message_async(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert request.url.path == "/v1/mailboxes/mbx_123/inbox/messages/eml_123/raw"
+            return httpx.Response(200, content=b"raw")
+
+        client = make_async_client(handler)
+        assert await client.mailboxes.download_inbox_message_raw("mbx_123", "eml_123") == b"raw"
+
+    def test_reads_and_deletes_new_inbox_draft(self) -> None:
+        calls: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            calls.append(f"{request.method} {request.url.path}")
+            if request.method == "DELETE":
+                return httpx.Response(204)
+            return json_response(mock_inbox_draft)
+
+        client = make_client(handler)
+        assert client.mailboxes.get_inbox_draft("mbx_123", "eml_draft")["id"] == "eml_draft"
+        assert client.mailboxes.delete_inbox_draft("mbx_123", "eml_draft") is None
+        assert calls == [
+            "GET /v1/mailboxes/mbx_123/inbox/drafts/eml_draft",
+            "DELETE /v1/mailboxes/mbx_123/inbox/drafts/eml_draft",
+        ]
+
+    @pytest.mark.asyncio
+    async def test_deletes_new_inbox_draft_async(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert request.method == "DELETE"
+            assert request.url.path == "/v1/mailboxes/mbx_123/inbox/drafts/eml_draft"
+            return httpx.Response(204)
+
+        assert await make_async_client(handler).mailboxes.delete_inbox_draft("mbx_123", "eml_draft") is None
+
+    def test_replaces_reply_draft_files_without_body(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert request.method == "PATCH"
+            assert request.url.path == "/v1/mailboxes/mbx_123/inbox/threads/thd_1/drafts/drf_1"
+            assert json.loads(request.content) == {
+                "attachments": [{"id": "blob_1"}, {"staged_attachment_id": "sat_2"}]
+            }
+            return json_response({"object": "inbox_reply_draft", "id": "drf_1"})
+
+        make_client(handler).mailboxes.update_inbox_reply_draft(
+            "mbx_123",
+            "thd_1",
+            "drf_1",
+            {"attachments": [{"id": "blob_1"}, {"staged_attachment_id": "sat_2"}]},
+        )
+
+    def test_updates_new_inbox_draft(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert request.method == "PATCH"
+            assert request.url.path == "/v1/mailboxes/mbx_123/inbox/drafts/eml_draft"
+            assert json.loads(request.content) == {"text": "Corrected."}
+            return json_response(mock_inbox_draft)
+
+        client = make_client(handler)
+        draft = client.mailboxes.update_inbox_draft("mbx_123", "eml_draft", {"text": "Corrected."})
+        assert draft["id"] == "eml_draft"
 
     def test_creates_new_inbox_draft(self) -> None:
         def handler(request: httpx.Request) -> httpx.Response:

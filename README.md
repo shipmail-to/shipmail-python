@@ -198,6 +198,9 @@ new_draft = client.mailboxes.create_inbox_draft(mailbox_id, {
     "subject": "Kickoff",
     "text": "Draft for review.",
 })
+
+# Correct it. Its id and review_url stay the same, and this never sends.
+client.mailboxes.update_inbox_draft(mailbox_id, new_draft["id"], {"text": "Corrected draft."})
 ```
 
 ### Messages
@@ -220,6 +223,28 @@ analytics = client.messages.list_analytics({
 })
 # Follow analytics["pagination"]["next_cursor"], then persist snapshot_at.
 ```
+
+### Transactional domains and senders
+
+A transactional domain is a sending subdomain of one of your verified domains, such as `mail.example.com`. A transactional sender is an address on it, such as `hello@mail.example.com`, whose replies go to a mailbox you choose.
+
+```python
+domain = client.transactional_domains.create({"root_domain": "example.com", "subdomain": "mail"})
+# Publish each domain["dns_records"] entry at your DNS host, then check until it is verified.
+checked = client.transactional_domains.verify(domain["id"])
+
+if checked["status"] == "verified":
+    sender = client.transactional_senders.create({
+        "domain_id": domain["id"],
+        "mailbox_id": "550e8400-e29b-41d4-a716-446655440000",
+        "local_part": "hello",
+        "display_name": "Acme",
+    })
+    client.transactional_senders.list({"domain_id": domain["id"]})
+    client.transactional_senders.update(sender["id"], {"state": "disabled"})
+```
+
+`dns_records` is empty until setup finishes; call `create` again with the same values to resume it. Senders have no delete: turn one off with `"state": "disabled"`. `transactional_domains.delete` is refused while senders use the domain. Then send from the sender's address with `messages.send`, or create an SMTP credential for it.
 
 ### SMTP credentials
 
@@ -393,7 +418,11 @@ newsletter = client.newsletters.create({
     ],
 })
 
-client.newsletters.preview(newsletter["id"])
+# The email exactly as delivered: subject, footer, unsubscribe link and headers.
+# Preview as one reader a send would reach (needs audiences:read too).
+client.newsletters.preview(newsletter["id"], {
+    "preview_as": {"type": "subscriber", "subscriber_id": "audmem_123"},
+})
 
 client.newsletters.send_test(newsletter["id"], {
     "recipient_email": "owner@example.com",
@@ -416,6 +445,23 @@ sanitized inline HTML. Use `<p>` and `<br>` for line breaks. Allowed tags are
 `body_html` or `custom_html` for a fully custom email-safe layout.
 Concurrent newsletter updates can raise `ConflictError` (409). Fetch the latest
 newsletter, merge your changes, and retry the update.
+
+After a send, list each reader's result, or look one address up:
+
+```python
+for recipient in client.newsletters.recipients.list_auto_paginating(newsletter["id"], status="skipped"):
+    print(recipient["email_address"], recipient["reason"])
+
+client.newsletters.recipients.get_by_email(newsletter["id"], "reader@example.com")
+```
+
+A subscriber's `mailable` and `not_mailable_reasons` say whether newsletters can reach the
+address. A newsletter opt-out is the reader's consent: `client.suppressions.remove()` never lifts
+it. It raises `ConflictError` with `details[0]["code"] == "consent_opt_out"` when the address has
+only an opt-out, and returns a `suppression_removal` object when an opt-out remains after the
+suppression was removed. Lift it with fresh consent instead:
+`client.suppressions.resubscribe("reader@example.com", {"consent_source": "Replied to ask to rejoin"})`
+works for any address, and resubscribing a subscriber in their audience also lifts it.
 
 ### Templates
 

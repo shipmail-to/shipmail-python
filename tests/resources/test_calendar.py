@@ -41,6 +41,7 @@ mock_event = {
 mock_mutation_event = {
     **mock_event,
     "invitation_outcomes": [],
+    "invitation_skipped": [],
     "invitation_failures": [],
 }
 
@@ -60,7 +61,18 @@ class TestCreate:
                 "start": "2026-08-01T14:00:00",
                 "attendees": [{"email": "guest@example.com", "name": "Guest"}],
             }
-            return json_response(mock_mutation_event, 201)
+            return json_response(
+                {
+                    **mock_mutation_event,
+                    "invitation_skipped": [
+                        {
+                            "recipient": "guest@example.com",
+                            "reason": "send_invitations_false",
+                        }
+                    ],
+                },
+                201,
+            )
 
         client = make_client(handler)
         event = client.calendar.events.create(
@@ -75,6 +87,9 @@ class TestCreate:
             }
         )
         assert event["id"] == "evt_1"
+        assert event["invitation_outcomes"] == []
+        assert event["invitation_skipped"][0]["reason"] == "send_invitations_false"
+        assert event["invitation_failures"] == []
 
 
 class TestList:

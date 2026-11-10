@@ -39,6 +39,8 @@ from .resources.status import AsyncStatus, SyncStatus
 from .resources.suppressions import AsyncSuppressions, SyncSuppressions
 from .resources.templates import AsyncTemplates, SyncTemplates
 from .resources.threads import AsyncThreads, SyncThreads
+from .resources.transactional_domains import AsyncTransactionalDomains, SyncTransactionalDomains
+from .resources.transactional_senders import AsyncTransactionalSenders, SyncTransactionalSenders
 from .resources.webhooks import AsyncWebhooks, SyncWebhooks
 
 logger = logging.getLogger("shipmail")
@@ -65,6 +67,8 @@ class Shipmail(BaseClient):
     suppressions: SyncSuppressions
     templates: SyncTemplates
     threads: SyncThreads
+    transactional_domains: SyncTransactionalDomains
+    transactional_senders: SyncTransactionalSenders
     webhooks: SyncWebhooks
     status: SyncStatus
 
@@ -108,6 +112,8 @@ class Shipmail(BaseClient):
         self.suppressions = SyncSuppressions(self)
         self.templates = SyncTemplates(self)
         self.threads = SyncThreads(self)
+        self.transactional_domains = SyncTransactionalDomains(self)
+        self.transactional_senders = SyncTransactionalSenders(self)
         self.webhooks = SyncWebhooks(self)
         self.status = SyncStatus(self)
 
@@ -276,6 +282,8 @@ class AsyncShipmail(BaseClient):
     suppressions: AsyncSuppressions
     templates: AsyncTemplates
     threads: AsyncThreads
+    transactional_domains: AsyncTransactionalDomains
+    transactional_senders: AsyncTransactionalSenders
     webhooks: AsyncWebhooks
     status: AsyncStatus
 
@@ -319,6 +327,8 @@ class AsyncShipmail(BaseClient):
         self.suppressions = AsyncSuppressions(self)
         self.templates = AsyncTemplates(self)
         self.threads = AsyncThreads(self)
+        self.transactional_domains = AsyncTransactionalDomains(self)
+        self.transactional_senders = AsyncTransactionalSenders(self)
         self.webhooks = AsyncWebhooks(self)
         self.status = AsyncStatus(self)
 

@@ -26,6 +26,9 @@ AUTOMATION = {
     "definition": DEFINITION,
     "last_run": None,
     "next_run_at": None,
+    "runnable": True,
+    "blocked_reasons": [],
+    "send_degraded_reasons": [],
     "created_at": "2026-08-02T00:00:00.000Z",
     "updated_at": "2026-08-02T00:00:00.000Z",
 }
@@ -82,3 +85,42 @@ async def test_async_automations_use_the_same_contract() -> None:
     assert (await client.automations.list())["data"][0]["id"] == AUTOMATION["id"]
     assert (await client.automations.run(AUTOMATION["id"]))["status"] == "queued"
     assert [request.method for request in requests] == ["GET", "POST"]
+
+
+TEST_RESULT = {
+    "object": "automation_test",
+    "automation_id": AUTOMATION["id"],
+    "mailbox_id": "mbx_1",
+    "message_id": "eml_1",
+    "runnable": True,
+    "blocked_reasons": [],
+    "send_degraded_reasons": [],
+    "conditions": [],
+    "conditions_matched": True,
+    "would_run": True,
+    "mode": "draft",
+    "actions": [{"index": 0, "type": "generate_mail_report"}],
+    "model_calls": 0,
+}
+
+
+def test_tests_an_automation_on_a_message() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "POST"
+        assert request.url.path == f"/v1/automations/{AUTOMATION['id']}/test"
+        assert json.loads(request.content) == {"mailbox_id": "mbx_1", "message_id": "eml_1"}
+        return json_response(TEST_RESULT)
+
+    client = make_client(handler)
+    assert client.automations.test(AUTOMATION["id"], {"mailbox_id": "mbx_1", "message_id": "eml_1"}) == TEST_RESULT
+
+
+@pytest.mark.asyncio
+async def test_tests_an_automation_on_a_message_async() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == f"/v1/automations/{AUTOMATION['id']}/test"
+        return json_response(TEST_RESULT)
+
+    client = make_async_client(handler)
+    result = await client.automations.test(AUTOMATION["id"], {"mailbox_id": "mbx_1", "message_id": "eml_1"})
+    assert result["would_run"] is True

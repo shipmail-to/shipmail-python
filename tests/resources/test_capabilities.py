@@ -17,6 +17,10 @@ class TestGet:
                 "resource_semantics": "legacy-intersection",
             },
             "allowed_mcp_tools": ["shipmail_list_messages", "shipmail_send_message"],
+            "organization": {
+                "default_timezone": "Europe/Lisbon",
+                "ai": {"models_enabled": True, "automatic_send_enabled": False},
+            },
         }
 
         def handler(request: httpx.Request) -> httpx.Response:
@@ -29,3 +33,4 @@ class TestGet:
             "shipmail_list_messages",
             "shipmail_send_message",
         ]
+        assert result["organization"]["default_timezone"] == "Europe/Lisbon"

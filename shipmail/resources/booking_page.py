@@ -10,7 +10,9 @@ if TYPE_CHECKING:
     from .._client import AsyncShipmail, Shipmail
     from .._types.booking_page import (
         BookingPage,
+        BookingPageSlots,
         CreateBookingPageParams,
+        GetBookingPageSlotsParams,
         ListBookingPagesParams,
         UpdateBookingPageParams,
     )
@@ -19,6 +21,15 @@ if TYPE_CHECKING:
 
 def _page(page_id: str) -> str:
     return f"/booking-pages/{quote(page_id, safe='')}"
+
+
+def _slots_query(
+    params: GetBookingPageSlotsParams | None,
+) -> dict[str, str | int | bool | None]:
+    return {
+        "from": params.get("from") if params else None,
+        "to": params.get("to") if params else None,
+    }
 
 
 class SyncBookingPages:
@@ -53,6 +64,21 @@ class SyncBookingPages:
     def get(self, id: str, options: MethodOptions | None = None) -> BookingPage:
         return self._client.request(
             RequestOptions(method="GET", path=_page(id), method_options=options)
+        )
+
+    def slots(
+        self,
+        id: str,
+        params: GetBookingPageSlotsParams | None = None,
+        options: MethodOptions | None = None,
+    ) -> BookingPageSlots:
+        return self._client.request(
+            RequestOptions(
+                method="GET",
+                path=f"{_page(id)}/slots",
+                query=_slots_query(params),
+                method_options=options,
+            )
         )
 
     def update(
@@ -98,6 +124,21 @@ class AsyncBookingPages:
     async def get(self, id: str, options: MethodOptions | None = None) -> BookingPage:
         return await self._client.request(
             RequestOptions(method="GET", path=_page(id), method_options=options)
+        )
+
+    async def slots(
+        self,
+        id: str,
+        params: GetBookingPageSlotsParams | None = None,
+        options: MethodOptions | None = None,
+    ) -> BookingPageSlots:
+        return await self._client.request(
+            RequestOptions(
+                method="GET",
+                path=f"{_page(id)}/slots",
+                query=_slots_query(params),
+                method_options=options,
+            )
         )
 
     async def update(

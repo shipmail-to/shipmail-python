@@ -1,10 +1,31 @@
 from __future__ import annotations
 
 import json
+from typing import get_args
 
 import httpx
 
+from shipmail._types.common import (
+    WEBHOOK_DELIVERY_EVENT_TYPES,
+    WEBHOOK_EVENT_TYPES,
+    WebhookDeliveryEventType,
+    WebhookEventType,
+)
 from tests.conftest import json_response, make_client
+
+NEWSLETTER_RECIPIENT_EVENTS = (
+    "newsletter.recipient.bounced",
+    "newsletter.recipient.complained",
+    "newsletter.recipient.unsubscribed",
+)
+
+
+def test_event_lists_include_newsletter_recipient_events() -> None:
+    assert set(get_args(WebhookEventType)) == set(WEBHOOK_EVENT_TYPES)
+    assert set(get_args(WebhookDeliveryEventType)) == set(WEBHOOK_DELIVERY_EVENT_TYPES)
+    for event in NEWSLETTER_RECIPIENT_EVENTS:
+        assert event in WEBHOOK_EVENT_TYPES
+        assert event in WEBHOOK_DELIVERY_EVENT_TYPES
 
 mock_webhook = {
     "object": "webhook",

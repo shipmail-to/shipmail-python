@@ -17,9 +17,12 @@ mock_audience = {
     "consent_source": "Signup form",
     "feed_enabled": False,
     "feed_url": None,
+    "view_in_browser_default": True,
     "cleanup_enabled": True,
     "cleanup_ignored_issues": 6,
     "cleanup_inactive_days": 180,
+    "confirmation_email_copy": None,
+    "last_chance_email_copy": None,
     "created_at": "2026-01-01T00:00:00Z",
     "updated_at": "2026-01-01T00:00:00Z",
 }
@@ -46,6 +49,8 @@ mock_subscriber = {
     "email_address": "jane@shipmail.to",
     "display_name": None,
     "status": "subscribed",
+    "mailable": True,
+    "not_mailable_reasons": [],
     "merge_fields": {},
     "consent_source": "Signup form",
     "created_at": "2026-01-01T00:00:00Z",
@@ -98,6 +103,33 @@ class TestAudiences:
         audience = client.audiences.update("aud_123", {"name": "Renamed"})
         assert audience["name"] == "Renamed"
 
+    def test_update_sends_view_in_browser_default(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert json.loads(request.content) == {"view_in_browser_default": False}
+            return json_response({**mock_audience, "view_in_browser_default": False})
+
+        client = make_client(handler)
+        audience = client.audiences.update("aud_123", {"view_in_browser_default": False})
+        assert audience["view_in_browser_default"] is False
+
+    def test_update_sends_email_copy_and_null_to_clear(self) -> None:
+        confirmation = {"fr": {"subject": "Confirmez votre inscription", "message": "Un clic et c'est fait."}}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert json.loads(request.content) == {
+                "confirmation_email_copy": confirmation,
+                "last_chance_email_copy": None,
+            }
+            return json_response({**mock_audience, "confirmation_email_copy": confirmation})
+
+        client = make_client(handler)
+        audience = client.audiences.update(
+            "aud_123",
+            {"confirmation_email_copy": confirmation, "last_chance_email_copy": None},
+        )
+        assert audience["confirmation_email_copy"] == confirmation
+        assert audience["last_chance_email_copy"] is None
+
     def test_delete_returns_none(self) -> None:
         def handler(request: httpx.Request) -> httpx.Response:
             assert request.method == "DELETE"
@@ -141,6 +173,47 @@ class TestSubscribers:
 
         client = make_client(handler)
         client.audiences.subscribers.list("aud_123", {"status": "subscribed"})
+
+    def test_add_returns_the_skip_reason(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            return json_response(
+                {"email_address": "jane@shipmail.to", "outcome": "skipped_not_mailable", "reason": "unsubscribed"}
+            )
+
+        client = make_client(handler)
+        result = client.audiences.subscribers.add("aud_123", {"email_address": "jane@shipmail.to"})
+        assert result["outcome"] == "skipped_not_mailable"
+        assert result.get("reason") == "unsubscribed"
+
+    def test_get_returns_why_an_address_is_not_mailable(self) -> None:
+        reasons = [
+            {
+                "reason": "unsubscribed",
+                "source": "newsletter_optout",
+                "created_at": "2026-01-02T00:00:00.000Z",
+                "newsletter_id": "nws_1",
+                "test_send": False,
+            },
+            {
+                "reason": "hard_bounce",
+                "source": "suppression",
+                "created_at": "2026-01-01T00:00:00.000Z",
+                "expires_at": None,
+            },
+        ]
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert request.url.path == "/v1/audiences/aud_123/subscribers/audmem_1"
+            return json_response({**mock_subscriber, "mailable": False, "not_mailable_reasons": reasons})
+
+        client = make_client(handler)
+        subscriber = client.audiences.subscribers.get("aud_123", "audmem_1")
+        assert subscriber["status"] == "subscribed"
+        assert subscriber["mailable"] is False
+        first = subscriber["not_mailable_reasons"][0]
+        assert first["source"] == "newsletter_optout"
+        assert first["newsletter_id"] == "nws_1"
+        assert subscriber["not_mailable_reasons"][1]["source"] == "suppression"
 
     def test_get_by_email_encodes_segment(self) -> None:
         def handler(request: httpx.Request) -> httpx.Response:
@@ -264,6 +337,34 @@ class TestAudienceFeeds:
             "/v1/audiences/aud_123/feed/rotate",
             "/v1/audiences/aud_123/feed/revoke",
         ]
+
+
+class TestAsyncAudiences:
+    @pytest.mark.asyncio
+    async def test_update_sends_email_copy(self) -> None:
+        last_chance = {"en": {"subject": "Still with us?", "message": "Keep getting our letters."}}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert request.method == "PATCH"
+            assert json.loads(request.content) == {"last_chance_email_copy": last_chance}
+            return json_response({**mock_audience, "last_chance_email_copy": last_chance})
+
+        client = make_async_client(handler)
+        audience = await client.audiences.update("aud_123", {"last_chance_email_copy": last_chance})
+        await client.aclose()
+        assert audience["last_chance_email_copy"] == last_chance
+
+
+    @pytest.mark.asyncio
+    async def test_update_sends_view_in_browser_default(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert json.loads(request.content) == {"view_in_browser_default": False}
+            return json_response({**mock_audience, "view_in_browser_default": False})
+
+        client = make_async_client(handler)
+        audience = await client.audiences.update("aud_123", {"view_in_browser_default": False})
+        await client.aclose()
+        assert audience["view_in_browser_default"] is False
 
 
 class TestAsyncSubscribers:

@@ -160,7 +160,18 @@ class RateLimitError(ShipmailError):
 
 
 class ConflictError(ShipmailError):
-    def __init__(self, message: str, request_id: str | None = None) -> None:
+    # Why the request conflicts, when the server says. For example, removing a
+    # suppression for an address that only has a newsletter opt-out fails with
+    # code "consent_opt_out".
+    details: list[ApiErrorDetail] | None
+
+    def __init__(
+        self,
+        message: str,
+        request_id: str | None = None,
+        *,
+        details: list[ApiErrorDetail] | None = None,
+    ) -> None:
         super().__init__(
             message,
             status=409,
@@ -168,6 +179,7 @@ class ConflictError(ShipmailError):
             request_id=request_id,
             retryable=False,
         )
+        self.details = details
 
 
 class InternalServerError(ShipmailError):
@@ -277,7 +289,7 @@ def map_error_from_response(
         retry_after = error.get("retry_after")
         return RateLimitError(message, request_id=rid, retry_after=retry_after)
     if error_type == "conflict":
-        return ConflictError(message, rid)
+        return ConflictError(message, rid, details=error.get("details"))
     if error_type == "reconciliation_required":
         return ReconciliationRequiredError(
             message, rid, message_id=error.get("message_id")
